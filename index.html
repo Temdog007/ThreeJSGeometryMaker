@@ -5,6 +5,7 @@
         <title>three.js Geometry Maker</title>
         <script src="three.min.js"></script>
         <script src="OrbitControls.js"></script>
+        <script src='EditorControls.js'></script>
     </head>
 
     <body style="margin:0px; width:100%; height: 100%">
@@ -66,7 +67,7 @@
                         if(input.parentNode === parent)
                         {
                             var tab = currentPoint[id] || currentPoint.userData[id];
-                            tab[key] = input.value;
+                            tab[key] = parseFloat(input.value);
                             break;
                         }
                     }
@@ -87,11 +88,11 @@
                 context.textAlign = "left";
 
                 var uv = parent.userData.uv;
-                var text = "uv: " + uv.x + ", " + uv.y;
+                var text = "uv: " + uv.x.toFixed(2) + ", " + uv.y.toFixed(2);
                 context.fillText(text, 0, 0, 64);
 
                 var normal = parent.userData.normal;
-                text = "normal: " + normal.x + ", " + normal.y + "," + normal.z;
+                text = "normal: " + normal.x.toFixed(2) + ", " + normal.y.toFixed(2) + "," + normal.z.toFixed(2);
                 context.fillText(text, 0, 32, 64);
 
                 var mesh = new THREE.Mesh(
@@ -111,6 +112,36 @@
                 scene.add(addPlane(currentPoint.clone()));
             }
 
+            function normalizeNormalVector()
+            {
+                currentPoint.userData.normal.normalize();
+                sync();
+            }
+
+            var syncArgs = ['position', 'uv', 'normal'];
+            function sync(args)
+            {
+                args = args || syncArgs;
+                for(var id of args)
+                {
+                    var parent = document.getElementById(id);
+                    for(var key of keys)
+                    {
+                        var inputs = document.getElementsByClassName(key);
+                        for(var input of inputs)
+                        {
+                            if(input.parentNode === parent)
+                            {
+                                var tab = currentPoint[id] || currentPoint.userData[id];
+                                input.value = tab[key];
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            window.addEventListener('load', function(){sync();});
+
         </script>
 
         <div id='Current Vertex' style='z-index: 1; background : silver; padding:5px; position:fixed; top:0; left:0; overflow:auto;'>
@@ -120,19 +151,30 @@
             <h3>Position</h3>
             <div id="position">
                 <label for="x">X</label>
-                <input type='number' class='x' value='0' onchange="updatePosition('position')">
+                <input type='number' step='any' class='x' value='0' onchange="updatePosition('position')">
                 <label for="x">Y</label>
-                <input type='number' class='y' value='0' onchange="updatePosition('position')">
+                <input type='number' step='any' class='y' value='0' onchange="updatePosition('position')">
                 <label for="x">Z</label>
-                <input type='number' class='z' value='0' onchange="updatePosition('position')">
+                <input type='number' step='any' class='z' value='0' onchange="updatePosition('position')">
             </div>
             
             <h3>UV</h3>
             <div id="uv">
                 <label for="x">X</label>
-                <input type='number' class='x' value='0' onchange="updatePosition('uv')">
+                <input type='number' step='any' class='x' value='0' onchange="updatePosition('uv')">
                 <label for="x">Y</label>
-                <input type='number' class='y' value='0' onchange="updatePosition('uv')">
+                <input type='number' step='any' class='y' value='0' onchange="updatePosition('uv')">
+            </div>
+
+            <h3>Normal</h3>
+            <div id="normal">
+                <label for="x">X</label>
+                <input type='number' step='any' class='x' value='0' onchange="updatePosition('normal')">
+                <label for="x">Y</label>
+                <input type='number' step='any' class='y' value='0' onchange="updatePosition('normal')">
+                <label for="x">Z</label>
+                <input type='number' step='any' class='z' value='0' onchange="updatePosition('normal')">
+                <button type='button' onclick='normalizeNormalVector()'>Normalize</button>
             </div>
         </div>
     </body>
