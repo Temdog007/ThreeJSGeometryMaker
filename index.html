@@ -79,8 +79,6 @@
             var ray = new THREE.Ray()
             window.addEventListener('mousemove', function(e)
             {
-                if(currentMode != 'camera'){return;}
-
                 mouse.set(
                     (e.clientX / window.innerWidth) * 2 - 1,
                     -(e.clientY / window.innerHeight) * 2 + 1
@@ -107,12 +105,18 @@
                 }
             }
 
-            var selectedIndices = [];
+            var selectedIndices = new Set();
             var indices = [];
             function clearIndices()
             {
-                indices = indices.concat(selectedIndices);
-                selectedIndices.length = 0;     
+                if(selectedIndices.size >= 3)
+                {
+                    for(var value of selectedIndices)
+                    {
+                        indices.push(value.parent.children.indexOf(value));
+                    }
+                }
+                selectedIndices.clear();
                 geometryGroup.traverse(setNormalMaterial);   
             }
 
@@ -120,9 +124,12 @@
             
             var selectedObject;
             var drag = new THREE.DragControls(objects, camera, renderer.domElement);
+            var shiftHeld = false;
             drag.addEventListener('dragstart', function(e)
             {
-                if(currentMode == 'delete')
+                controls.enabled = false;
+                currentPoint.visible = false;
+                if(shiftHeld)
                 {
                     e.object.parent.remove(e.object);
                 }
@@ -131,39 +138,31 @@
                     selectedObject = e.object;
                     sync();
                     
-                    var index = selectedIndices.length;
-                    selectedIndices.push(geometryGroup.children.indexOf(selectedObject));
+                    var index = selectedIndices.size;
+                    selectedIndices.add(selectedObject);
                     selectedObject.material = indexMaterials[index];
-                    if(selectedIndices.length >= 3)
+                    if(selectedIndices.size >= 3)
                     {
                         clearIndices();
                     }
                 }
             });
             drag.addEventListener('drag', sync);
-            drag.addEventListener('dragend', sync);
-            drag.deactivate();
+            drag.addEventListener('dragend', function()
+            {
+                controls.enabled = true;
+                currentPoint.visible = true;
+                sync();
+            });
 
-            var modes = ['camera', 'drag', 'delete'];
-            var currentMode = 'camera';
 
             window.addEventListener('keydown', function(e)
             {
                 if(e.repeat){return;}
 
-                if(e.key == "F1")
-                {
-                    currentMode = 'drag';
-                }
-                else if(e.key == 'F2')
-                {
-                    currentMode = 'camera';
-                }
-                else if(e.key == 'Delete')
-                {
-                    currentMode = 'delete';
-                }
-                else if(e.key == "Insert" && currentMode == 'camera')
+                shiftHeld = e.shiftKey;
+
+                if(e.key == "Insert")
                 {
                     normalizeNormalVector();
                     addVertex();
@@ -176,22 +175,11 @@
                 {
                     clearIndices();
                 }
-                else {return;}
+            })
 
-                if(currentMode == 'camera')
-                {
-                    controls.enabled = true;
-                    currentPoint.visible = true;
-                    drag.deactivate();
-                    selectedObject = null;
-                }
-                else
-                {
-                    controls.enabled = false;
-                    currentPoint.visible = false;
-                    drag.activate();
-                }
-                document.getElementById('modeLabel').innerText = currentMode;
+            window.addEventListener('keyup', function(e)
+            {
+                shiftHeld = e.shiftKey;
             })
 
             function resize()
@@ -379,9 +367,16 @@
             var loader = new THREE.ObjectLoader();
             function loadJSON(textarea)
             {
+                if(textarea.style.display == 'none')
+                {
+                    textarea.style.display = 'block';
+                    return;
+                }
+
                 var text = textarea.value;
                 if(!text){return;}
 
+                textarea.style.display = 'none';
                 var obj = loader.parse(JSON.parse(text));
                 geometryGroup.parent.remove(geometryGroup);
                 geometryGroup = obj;
@@ -419,7 +414,6 @@
         </script>
 
         <div id='Current Vertex' style='z-index: 1; background : silver; padding:5px; position:fixed; top:0; right:0; overflow:auto;'>
-            <label>Mode: </label><label id='modeLabel'>Camera</label><br>
 
             <h2>Current Vertex</h2>
 
@@ -452,12 +446,12 @@
                 <button type='button' onclick='normalizeNormalVector()'>Normalize</button>
             </div>
 
-            <button type='button' onclick='saveGeometry()'>Save Scene</button><br>
-            <div>
-                <textarea id='jsonCode' rows="4" cols="50" placeholder="Enter JSON code to load"></textarea>
-                <button type='button' onclick="loadJSON(document.getElementById('jsonCode'))">Load JSON</button>
-            </div><br>
-            <button type='button' onclick="clearGeometry()">Clear</button><br>
+            <table>
+                <tr><button type='button' onclick="loadJSON(document.getElementById('jsonCode'))">Load Geometry</button></tr>
+                <tr><button type='button' onclick='saveGeometry()'>Save Geometry</button></tr>
+                <tr><button type='button' onclick="clearGeometry()">Clear</button><br></tr>
+            </table>
+            <textarea id='jsonCode' rows="4" cols="50" placeholder="Enter JSON code to load" style='display: none'></textarea>
         </div>
     </body>
 </html>
