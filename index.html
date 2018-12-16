@@ -27,6 +27,9 @@
 
             var scene = new THREE.Scene();
 
+            var geometryGroup = new THREE.Group();
+            scene.add(geometryGroup);
+
             var currentPoint = new THREE.Mesh(
                 new THREE.SphereBufferGeometry(),
                 new THREE.MeshBasicMaterial({
@@ -109,7 +112,7 @@
 
             function addVertex()
             {
-                scene.add(addPlane(currentPoint.clone()));
+                geometryGroup.add(addPlane(currentPoint.clone()));
             }
 
             function normalizeNormalVector()
@@ -141,6 +144,33 @@
                 }
             }
             window.addEventListener('load', function(){sync();});
+
+            var currentMesh;
+
+            var link = document.createElement('a');
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            function saveScene()
+            {
+                var str = JSON.stringify(geometryGroup.toJSON());
+                str = str.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+
+                link.href = URL.createObjectURL(new Blob([str], {type : 'text/plain'}));
+                link.download = 'geometry.json';
+                link.click();
+            }
+
+            var loader = new THREE.ObjectLoader();
+            function loadJSON(textarea)
+            {
+                var text = textarea.value;
+                if(!text){return;}
+
+                var obj = loader.parse(JSON.parse(text));
+                geometryGroup.parent.remove(geometryGroup);
+                geometryGroup = obj;
+                scene.add(geometryGroup);
+            }
 
         </script>
 
@@ -175,6 +205,12 @@
                 <label for="x">Z</label>
                 <input type='number' step='any' class='z' value='0' onchange="updatePosition('normal')">
                 <button type='button' onclick='normalizeNormalVector()'>Normalize</button>
+            </div>
+
+            <button type='button' onclick='saveScene()'>Save Scene</button><br>
+            <div>
+                <textarea id='jsonCode' rows="4" cols="50" placeholder="Enter JSON code to load"></textarea>
+                <button type='button' onclick="loadJSON(document.getElementById('jsonCode'))">Load JSON</button>
             </div>
         </div>
     </body>
