@@ -80,6 +80,11 @@
             var drag = new THREE.DragControls(objects, camera, renderer.domElement);
             drag.addEventListener('dragstart', function(e)
             {
+                if(currentMode == 'delete')
+                {
+                    e.object.parent.remove(e.object);
+                    return;
+                }
                 selectedObject = e.object;
                 sync();
             });
@@ -87,7 +92,7 @@
             drag.addEventListener('dragend', sync);
             drag.deactivate();
 
-            var modes = ['camera', 'drag', 'add'];
+            var modes = ['camera', 'drag', 'add', 'delete'];
             var currentMode = 'add';
 
             window.addEventListener('keydown', function(e)
@@ -106,10 +111,14 @@
                 {
                     currentMode = 'camera';
                 }
+                else if(e.key == 'Delete')
+                {
+                    currentMode = 'delete';
+                }
                 else {return;}
 
                 controls.enabled = currentMode == 'camera';
-                currentMode == 'drag' ? drag.activate() : drag.deactivate();
+                (currentMode == 'drag' || currentMode == 'delete') ? drag.activate() : drag.deactivate();
                 document.getElementById('modeLabel').innerText = currentMode;
                 currentPoint.visible = currentMode == 'add';
             })
