@@ -150,7 +150,7 @@
             var link = document.createElement('a');
             link.style.display = 'none';
             document.body.appendChild(link);
-            function saveScene()
+            function saveGeometry()
             {
                 var str = JSON.stringify(geometryGroup.toJSON());
                 str = str.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
@@ -170,6 +170,34 @@
                 geometryGroup.parent.remove(geometryGroup);
                 geometryGroup = obj;
                 scene.add(geometryGroup);
+            }
+
+            window.addEventListener('load', function()
+            {
+                var textarea = document.getElementById("jsonCode");
+                textarea.addEventListener('dragover', function(evt)
+                {
+                    evt.stopPropagation();
+                    evt.preventDefault();
+                    evt.dataTransfer.dropEffect = 'copy';
+                }, false);
+                textarea.addEventListener('drop', function(evt)
+                {
+                    evt.stopPropagation();
+                    evt.preventDefault();
+
+                    var files = evt.dataTransfer.files;
+                    var reader = new FileReader();
+                    reader.onload = function(event){
+                        textarea.value = event.target.result;
+                    }
+                    reader.readAsText(files[0], "UTF-8");
+                }, false);
+            })
+
+            function clearGeometry()
+            {
+                geometryGroup.children = [];
             }
 
         </script>
@@ -207,11 +235,12 @@
                 <button type='button' onclick='normalizeNormalVector()'>Normalize</button>
             </div>
 
-            <button type='button' onclick='saveScene()'>Save Scene</button><br>
+            <button type='button' onclick='saveGeometry()'>Save Scene</button><br>
             <div>
                 <textarea id='jsonCode' rows="4" cols="50" placeholder="Enter JSON code to load"></textarea>
                 <button type='button' onclick="loadJSON(document.getElementById('jsonCode'))">Load JSON</button>
-            </div>
+            </div><br>
+            <button type='button' onclick="clearGeometry()">Clear</button><br>
         </div>
     </body>
 </html>
