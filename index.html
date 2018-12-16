@@ -13,6 +13,8 @@
 
         <script>
             var scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xaaaaaa);
+
             var stats = new Stats();
             stats.dom.style.removeProperty('top');
             stats.dom.style.bottom = "0px";
@@ -74,12 +76,15 @@
             controls.enabled = false;
 
             var objects = [];
-            var selected;
+            var selectedObject;
             var drag = new THREE.DragControls(objects, camera, renderer.domElement);
             drag.addEventListener('dragstart', function(e)
             {
-                selected = e.selected;
+                selectedObject = e.object;
+                sync();
             });
+            drag.addEventListener('drag', sync);
+            drag.addEventListener('dragend', sync);
             drag.deactivate();
 
             var modes = ['camera', 'drag', 'add'];
@@ -91,12 +96,22 @@
 
                 if(e.key == "F1")
                 {
-                    currentMode = modes[(modes.indexOf(currentMode) + 1) % modes.length];
-                    controls.enabled = currentMode == 'camera';
-                    currentMode == 'drag' ? drag.activate() : drag.deactivate();
-                    document.getElementById('modeLabel').innerText = currentMode;
-                    currentPoint.visible = currentMode == 'add';
+                    currentMode = 'add';
                 }
+                else if(e.key == "F2")
+                {
+                    currentMode = 'drag';
+                }
+                else if(e.key == '`')
+                {
+                    currentMode = 'camera';
+                }
+                else {return;}
+
+                controls.enabled = currentMode == 'camera';
+                currentMode == 'drag' ? drag.activate() : drag.deactivate();
+                document.getElementById('modeLabel').innerText = currentMode;
+                currentPoint.visible = currentMode == 'add';
             })
 
             function resize()
@@ -134,14 +149,12 @@
                         }
                     }
                 }
+                sync(true);
             }
 
-            function addPlane(parent)
+            function draw()
             {
-                var canvas = document.createElement("canvas", {alpha : false});
-                canvas.width = canvas.height = 64;
-
-                var context = canvas.getContext('2d');
+                var context = this.context;
                 context.fillStyle = 'black';
                 context.fillRect(0, 0, 64, 64);
                 context.fillStyle = 'white';
@@ -149,26 +162,37 @@
                 context.textBaseline = "top";
                 context.textAlign = "left";
 
-                var uv = parent.userData.uv;
+                var uv = this.userData.uv;
                 var text = "uv: " + uv.x.toFixed(2) + ", " + uv.y.toFixed(2);
                 context.fillText(text, 0, 0, 64);
 
-                var normal = parent.userData.normal;
+                var normal = this.userData.normal;
                 text = "normal: " + normal.x.toFixed(2) + ", " + normal.y.toFixed(2) + "," + normal.z.toFixed(2);
                 context.fillText(text, 0, 32, 64);
+                this.material.map.needsUpdate = true;
+            }
 
-                var mesh = new THREE.Mesh(
-                    new THREE.PlaneBufferGeometry(),
-                    new THREE.MeshBasicMaterial({
+            function addPlane(parent)
+            {
+                var canvas = document.createElement("canvas", {alpha : false});
+                canvas.width = canvas.height = 64;
+
+                var mesh = new THREE.Sprite(
+                    new THREE.SpriteMaterial({
                         map : new THREE.CanvasTexture(canvas),
-                        side : THREE.DoubleSide
                     })
                 );
+                mesh.userData = parent.userData;
+                mesh.context = canvas.getContext('2d');
+
                 mesh.position.y = 2;
                 parent.add(mesh);
 
                 parent.material.opacity = 1;
                 parent.material.transparent = false;
+
+                parent.updatePlane = draw.bind(mesh);
+                parent.updatePlane();
                 return parent;
             }
 
@@ -179,18 +203,33 @@
 
             function normalizeNormalVector()
             {
-                currentPoint.userData.normal.normalize();
+                var target = currentMode == 'add' ? currentPoint : selectedObject;
+                if(!target){return;}
+
+                var normal = target.userData.normal;
+                if(normal.normalize)
+                {
+                    normal.normalize();
+                }
+                else
+                {
+                    var length = Math.sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+                    normal.x /= length;
+                    normal.y /= length;
+                    normal.z /= length;
+                }
                 sync();
             }
 
             var syncArgs = ['position', 'uv', 'normal'];
-            function sync(args)
+            function sync(targetToSource)
             {
-                var target = currentMode == 'add' ? currentPoint : selected;
+                targetToSource = targetToSource === true;
+
+                var target = currentMode == 'add' ? currentPoint : selectedObject;
                 if(!target){return;}
 
-                args = args || syncArgs;
-                for(var id of args)
+                for(var id of syncArgs)
                 {
                     var parent = document.getElementById(id);
                     for(var key of keys)
@@ -201,11 +240,22 @@
                             if(input.parentNode === parent)
                             {
                                 var tab = target[id] || target.userData[id];
-                                input.value = tab[key];
+                                if(targetToSource)
+                                {
+                                    tab[key] = parseFloat(input.value);
+                                }
+                                else
+                                {
+                                    input.value = tab[key];
+                                }
                                 break;
                             }
                         }
                     }
+                }
+                if(targetToSource && target.updatePlane)
+                {
+                    target.updatePlane();
                 }
             }
             window.addEventListener('load', function(){sync();});
