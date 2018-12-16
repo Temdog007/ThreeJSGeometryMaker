@@ -5,14 +5,21 @@
         <title>three.js Geometry Maker</title>
         <script src="three.min.js"></script>
         <script src="OrbitControls.js"></script>
-        <script src='EditorControls.js'></script>
+        <script src='DragControls.js'></script>
+        <script src='stats.js'></script>
     </head>
 
     <body style="margin:0px; width:100%; height: 100%">
 
         <script>
+            var scene = new THREE.Scene();
+            var stats = new Stats();
+            stats.dom.style.removeProperty('top');
+            stats.dom.style.bottom = "0px";
+            document.body.appendChild(stats.dom);
+
             var renderer = new THREE.WebGLRenderer();
-            renderer.setClearColor(1,1,1);
+            renderer.setPixelRatio(window.devicePixelRatio);
             var style = renderer.domElement.style;
             style.zIndex = 0;
             style.position = "fixed";
@@ -22,17 +29,17 @@
 
             var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight);
             camera.position.set(0, 0, 30);
-            camera.lookAt(0,0,0);
-            camera.updateProjectionMatrix();
 
-            var scene = new THREE.Scene();
+            var forward = new THREE.Vector3();
+
+            var planeDistance = 30;
 
             var geometryGroup = new THREE.Group();
             scene.add(geometryGroup);
 
             var currentPoint = new THREE.Mesh(
                 new THREE.SphereBufferGeometry(),
-                new THREE.MeshBasicMaterial({
+                new THREE.MeshNormalMaterial({
                     opacity : 0.5,
                     transparent : true
                 })
@@ -41,7 +48,56 @@
             currentPoint.userData.normal = new THREE.Vector3();
             scene.add(currentPoint);
 
+            var mouse = new THREE.Vector2();
+            var ray = new THREE.Ray()
+            window.addEventListener('mousemove', function(e)
+            {
+                if(currentMode != 'add'){return;}
+
+                mouse.set(
+                    (e.clientX / window.innerWidth) * 2 - 1,
+                    -(e.clientY / window.innerHeight) * 2 + 1
+                )
+
+                ray.origin.setFromMatrixPosition(camera.matrixWorld);
+                ray.direction.set(mouse.x, mouse.y, 0.5).unproject(camera).sub(ray.origin).normalize();
+
+                ray.direction.multiplyScalar(planeDistance);
+
+                forward.copy(ray.origin).add(ray.direction);
+               
+                currentPoint.position.copy(forward);
+                sync();
+            })
+
             var controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enabled = false;
+
+            var objects = [];
+            var selected;
+            var drag = new THREE.DragControls(objects, camera, renderer.domElement);
+            drag.addEventListener('dragstart', function(e)
+            {
+                selected = e.selected;
+            });
+            drag.deactivate();
+
+            var modes = ['camera', 'drag', 'add'];
+            var currentMode = 'add';
+
+            window.addEventListener('keydown', function(e)
+            {
+                if(e.repeat){return;}
+
+                if(e.key == "F1")
+                {
+                    currentMode = modes[(modes.indexOf(currentMode) + 1) % modes.length];
+                    controls.enabled = currentMode == 'camera';
+                    currentMode == 'drag' ? drag.activate() : drag.deactivate();
+                    document.getElementById('modeLabel').innerText = currentMode;
+                    currentPoint.visible = currentMode == 'add';
+                }
+            })
 
             function resize()
             {
@@ -54,7 +110,10 @@
             function render()
             {
                 window.requestAnimationFrame(render);
+
+                stats.begin();
                 renderer.render(scene, camera);
+                stats.end();
             }
             render();
 
@@ -107,6 +166,9 @@
                 );
                 mesh.position.y = 2;
                 parent.add(mesh);
+
+                parent.material.opacity = 1;
+                parent.material.transparent = false;
                 return parent;
             }
 
@@ -124,6 +186,9 @@
             var syncArgs = ['position', 'uv', 'normal'];
             function sync(args)
             {
+                var target = currentMode == 'add' ? currentPoint : selected;
+                if(!target){return;}
+
                 args = args || syncArgs;
                 for(var id of args)
                 {
@@ -135,7 +200,7 @@
                         {
                             if(input.parentNode === parent)
                             {
-                                var tab = currentPoint[id] || currentPoint.userData[id];
+                                var tab = target[id] || target.userData[id];
                                 input.value = tab[key];
                                 break;
                             }
@@ -145,7 +210,28 @@
             }
             window.addEventListener('load', function(){sync();});
 
-            var currentMesh;
+            function insertObj(obj)
+            {
+                if(obj.isMesh)
+                {
+                    objects.push(obj);
+                }
+            }
+
+            window.addEventListener('click', function(e)
+            {
+                if(currentMode != 'add'){return;}
+
+                normalizeNormalVector();
+                addVertex();
+                objects.length = 0;
+                geometryGroup.traverse(insertObj);
+            });
+
+            window.oncontextmenu = function(e)
+            {
+                return false;
+            };
 
             var link = document.createElement('a');
             link.style.display = 'none';
@@ -202,9 +288,10 @@
 
         </script>
 
-        <div id='Current Vertex' style='z-index: 1; background : silver; padding:5px; position:fixed; top:0; left:0; overflow:auto;'>
+        <div id='Current Vertex' style='z-index: 1; background : silver; padding:5px; position:fixed; top:0; right:0; overflow:auto;'>
+            <label>Mode: </label><label id='modeLabel'>add</label><br>
+
             <h2>Current Vertex</h2>
-            <button type="button" onclick="addVertex()">Add Vertex</button>
 
             <h3>Position</h3>
             <div id="position">
