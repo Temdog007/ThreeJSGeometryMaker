@@ -12,7 +12,32 @@
     <body style="margin:0px; width:100%; height: 100%">
 
         <script>
+            function createCanvas(text)
+            {
+                var canvas = document.createElement('canvas', {alpha : false});
+                canvas.width = canvas.height = 64;
+
+                var context = canvas.getContext('2d');
+                context.fillStyle = 'white';
+                context.fillRect(0,0,64,64);
+                context.fillStyle = 'black';
+                context.font = '64px Arial';
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                context.fillText(text, 32, 32, 64);
+
+                return canvas;
+            }
             var scene = new THREE.Scene();
+            var vertexMaterial = new THREE.MeshNormalMaterial();
+            var indexMaterials = [];
+            for(var i = 0; i < 3; ++i)
+            {
+                indexMaterials.push(new THREE.MeshBasicMaterial({
+                    map : new THREE.CanvasTexture(createCanvas(i)),
+                    color : Math.random() * 0xffffff
+                }))
+            }
             scene.background = new THREE.Color(0xaaaaaa);
 
             var stats = new Stats();
@@ -40,7 +65,7 @@
             scene.add(geometryGroup);
 
             var currentPoint = new THREE.Mesh(
-                new THREE.SphereBufferGeometry(),
+                new THREE.BoxBufferGeometry(),
                 new THREE.MeshNormalMaterial({
                     opacity : 0.5,
                     transparent : true
@@ -54,7 +79,7 @@
             var ray = new THREE.Ray()
             window.addEventListener('mousemove', function(e)
             {
-                if(currentMode != 'add'){return;}
+                if(currentMode != 'camera'){return;}
 
                 mouse.set(
                     (e.clientX / window.innerWidth) * 2 - 1,
@@ -73,9 +98,26 @@
             })
 
             var controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enabled = false;
+
+            function setNormalMaterial(obj)
+            {
+                if(obj.isMesh)
+                {
+                    obj.material = vertexMaterial;
+                }
+            }
+
+            var selectedIndices = [];
+            var indices = [];
+            function clearIndices()
+            {
+                indices = indices.concat(selectedIndices);
+                selectedIndices.length = 0;     
+                geometryGroup.traverse(setNormalMaterial);   
+            }
 
             var objects = [];
+            
             var selectedObject;
             var drag = new THREE.DragControls(objects, camera, renderer.domElement);
             drag.addEventListener('dragstart', function(e)
@@ -83,17 +125,27 @@
                 if(currentMode == 'delete')
                 {
                     e.object.parent.remove(e.object);
-                    return;
                 }
-                selectedObject = e.object;
-                sync();
+                else
+                {
+                    selectedObject = e.object;
+                    sync();
+                    
+                    var index = selectedIndices.length;
+                    selectedIndices.push(geometryGroup.children.indexOf(selectedObject));
+                    selectedObject.material = indexMaterials[index];
+                    if(selectedIndices.length >= 3)
+                    {
+                        clearIndices();
+                    }
+                }
             });
             drag.addEventListener('drag', sync);
             drag.addEventListener('dragend', sync);
             drag.deactivate();
 
-            var modes = ['camera', 'drag', 'add', 'delete'];
-            var currentMode = 'add';
+            var modes = ['camera', 'drag', 'delete'];
+            var currentMode = 'camera';
 
             window.addEventListener('keydown', function(e)
             {
@@ -101,13 +153,9 @@
 
                 if(e.key == "F1")
                 {
-                    currentMode = 'add';
-                }
-                else if(e.key == "F2")
-                {
                     currentMode = 'drag';
                 }
-                else if(e.key == '`')
+                else if(e.key == 'F2')
                 {
                     currentMode = 'camera';
                 }
@@ -115,12 +163,35 @@
                 {
                     currentMode = 'delete';
                 }
+                else if(e.key == "Insert" && currentMode == 'camera')
+                {
+                    normalizeNormalVector();
+                    addVertex();
+                    objects.length = 0;
+                    geometryGroup.traverse(insertObj);
+                    clearIndices();
+                    return;
+                }
+                else if(e.key == "Backspace")
+                {
+                    clearIndices();
+                }
                 else {return;}
 
-                controls.enabled = currentMode == 'camera';
-                (currentMode == 'drag' || currentMode == 'delete') ? drag.activate() : drag.deactivate();
+                if(currentMode == 'camera')
+                {
+                    controls.enabled = true;
+                    currentPoint.visible = true;
+                    drag.deactivate();
+                    selectedObject = null;
+                }
+                else
+                {
+                    controls.enabled = false;
+                    currentPoint.visible = false;
+                    drag.activate();
+                }
                 document.getElementById('modeLabel').innerText = currentMode;
-                currentPoint.visible = currentMode == 'add';
             })
 
             function resize()
@@ -166,18 +237,28 @@
                 var context = this.context;
                 context.fillStyle = 'black';
                 context.fillRect(0, 0, 64, 64);
-                context.fillStyle = 'white';
-                context.font = "Arial 28px";
-                context.textBaseline = "top";
-                context.textAlign = "left";
+                context.strokeStyle = context.fillStyle = 'white';
+                context.font = "8px Arial";
+                context.textBaseline = "middle";
+                context.textAlign = "center";
+
+                context.beginPath();
+                context.moveTo(32, 0);
+                context.lineTo(32, 64);
+                context.moveTo(0, 32);
+                context.lineTo(64, 32);
+                context.stroke();
 
                 var uv = this.userData.uv;
-                var text = "uv: " + uv.x.toFixed(2) + ", " + uv.y.toFixed(2);
-                context.fillText(text, 0, 0, 64);
+                context.fillText("UV", 16, 16, 32);
+                context.fillText(uv.x.toFixed(2), 48, 8, 32);
+                context.fillText(uv.y.toFixed(2), 48, 24, 32);
 
                 var normal = this.userData.normal;
-                text = "normal: " + normal.x.toFixed(2) + ", " + normal.y.toFixed(2) + "," + normal.z.toFixed(2);
-                context.fillText(text, 0, 32, 64);
+                context.fillText("Normal", 16, 48, 32);
+                context.fillText(normal.x.toFixed(2), 48, 40, 32);
+                context.fillText(normal.y.toFixed(2), 48, 48, 32);
+                context.fillText(normal.z.toFixed(2), 48, 56, 32);
                 this.material.map.needsUpdate = true;
             }
 
@@ -197,9 +278,6 @@
                 mesh.position.y = 2;
                 parent.add(mesh);
 
-                parent.material.opacity = 1;
-                parent.material.transparent = false;
-
                 parent.updatePlane = draw.bind(mesh);
                 parent.updatePlane();
                 return parent;
@@ -207,13 +285,16 @@
 
             function addVertex()
             {
-                geometryGroup.add(addPlane(currentPoint.clone()));
+                var mesh = new THREE.Mesh(currentPoint.geometry, vertexMaterial);
+                mesh.position.copy(currentPoint.position);
+                mesh.userData = JSON.parse(JSON.stringify(currentPoint.userData));
+                geometryGroup.add(addPlane(mesh));
             }
 
             function normalizeNormalVector()
             {
-                var target = currentMode == 'add' ? currentPoint : selectedObject;
-                if(!target){return;}
+                var target = selectedObject || currentPoint;
+                if(!target || !target.visible){return;}
 
                 var normal = target.userData.normal;
                 if(normal.normalize)
@@ -235,8 +316,8 @@
             {
                 targetToSource = targetToSource === true;
 
-                var target = currentMode == 'add' ? currentPoint : selectedObject;
-                if(!target){return;}
+                var target = selectedObject || currentPoint;
+                if(!target || !target.visible){return;}
 
                 for(var id of syncArgs)
                 {
@@ -276,16 +357,6 @@
                     objects.push(obj);
                 }
             }
-
-            window.addEventListener('click', function(e)
-            {
-                if(currentMode != 'add'){return;}
-
-                normalizeNormalVector();
-                addVertex();
-                objects.length = 0;
-                geometryGroup.traverse(insertObj);
-            });
 
             window.oncontextmenu = function(e)
             {
@@ -348,7 +419,7 @@
         </script>
 
         <div id='Current Vertex' style='z-index: 1; background : silver; padding:5px; position:fixed; top:0; right:0; overflow:auto;'>
-            <label>Mode: </label><label id='modeLabel'>add</label><br>
+            <label>Mode: </label><label id='modeLabel'>Camera</label><br>
 
             <h2>Current Vertex</h2>
 
