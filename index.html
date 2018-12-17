@@ -152,19 +152,23 @@
             var selectedObject;
             var drag = new THREE.DragControls(objects, camera, renderer.domElement);
             var shiftHeld = false;
+            var althHeld = false;
             drag.addEventListener('dragstart', function(e)
             {
-                controls.enabled = false;
-                currentPoint.visible = false;
-                if(shiftHeld)
+                if(altHeld)
                 {
                     e.object.parent.remove(e.object);
+                    return;
                 }
-                else
+
+                controls.enabled = false;
+                currentPoint.visible = false;
+
+                selectedObject = e.object;
+                sync();
+
+                if(shiftHeld)
                 {
-                    selectedObject = e.object;
-                    sync();
-                    
                     var index = selectedIndices.size;
                     selectedIndices.add(selectedObject);
                     if(index == selectedIndices.size){return;}
@@ -189,7 +193,8 @@
             {
                 if(e.repeat){return;}
 
-                shiftHeld = e.shiftKey;
+                shiftHeld = e.keyCode == 16;
+                altHeld = e.keyCode == 18;
 
                 if(e.key == "Insert")
                 {
@@ -211,7 +216,8 @@
 
             window.addEventListener('keyup', function(e)
             {
-                shiftHeld = e.shiftKey;
+                shiftHeld = false;
+                altHeld = false;
             })
 
             function resize()
