@@ -45,7 +45,7 @@
 
             light = new THREE.DirectionalLight(0xffffff);
             light.layers.set(1);
-            light.position.set(30, 30, 50);
+            light.position.set(6, 6, 10);
             light.lookAt(0,0,0);
             scene.add(light);
 
@@ -389,7 +389,7 @@
                     }
                     geometryGroup.add(addPlane(mesh));
                 }
-                indices = createdMesh.geometry.index.clone();
+                indices = createdMesh.geometry.index.array.slice();
             }
 
             window.addEventListener('load', function()
@@ -462,7 +462,6 @@
             {
                 var positions = [];
                 var uvs = [];
-                var normals = [];
 
                 for(var child of geometryGroup.children)
                 {
@@ -472,14 +471,13 @@
                     uvs.push(uv.x, uv.y);
 
                     var length = pos.length();
-                    normals.push(pos.x / length, pos.y / length, pos.z / length);
                 }
 
                 var geometry = createdMesh.geometry;
                 geometry.addAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
                 geometry.addAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-                geometry.addAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
                 geometry.setIndex(indices);
+                geometry.computeVertexNormals();
             }
 
             function switchSides(obj)
