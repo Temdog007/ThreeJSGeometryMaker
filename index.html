@@ -12,6 +12,16 @@
     <body style="margin:0px; width:100%; height: 100%">
 
         <script>
+            var EDIT_SCENE = new THREE.Layers(), MESH_SCENE = new THREE.Layers(), FACE_SCENE = new THREE.Layers();
+            EDIT_SCENE.set(0);
+            EDIT_SCENE.channel = 0;
+
+            MESH_SCENE.set(1);
+            MESH_SCENE.channel = 1;
+
+            FACE_SCENE.set(2);
+            FACE_SCENE.channel = 2;
+
             function createCanvas(text)
             {
                 var canvas = document.createElement('canvas', {alpha : false});
@@ -40,16 +50,19 @@
             scene.add(origin);
 
             var light = new THREE.AmbientLight(0xffffff);
-            light.layers.set(1);
+            light.layers.set(MESH_SCENE.channel);
             scene.add(light);
 
             light = new THREE.DirectionalLight(0xffffff);
-            light.layers.set(1);
+            light.layers.set(MESH_SCENE.channel);
             light.position.set(6, 6, 10);
             light.lookAt(0,0,0);
             scene.add(light);
 
-            var vertexMaterial = new THREE.MeshNormalMaterial();
+            var vertexMaterial = new THREE.MeshNormalMaterial({
+                wireframe : true
+            });
+            var selectedMaterial = new THREE.MeshNormalMaterial();
             var indexMaterials = [];
             for(var i = 0; i < 3; ++i)
             {
@@ -59,6 +72,10 @@
                 }))
             }
             scene.background = new THREE.Color(0xaaaaaa);
+
+            var facesGroup = new THREE.Group();
+            facesGroup.layers.set(FACE_SCENE.channel);
+            scene.add(facesGroup);
 
             var stats = new Stats();
             stats.dom.style.removeProperty('top');
@@ -83,7 +100,7 @@
             var createdMesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({
                 side : THREE.DoubleSide
             }));
-            createdMesh.layers.set(1);
+            createdMesh.layers.set(MESH_SCENE.channel);
             scene.add(createdMesh);
             
             var geometryGroup = new THREE.Group();
@@ -118,7 +135,11 @@
                 forward.copy(ray.origin).add(ray.direction);
                
                 currentPoint.position.copy(forward);
-                sync();
+
+                if(!selectedObject)
+                {
+                    sync();
+                }
             })
 
             var controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -148,7 +169,6 @@
                     {
                         indices.push(value.parent.children.indexOf(value));
                     }
-                    console.log("Added indices");
                 }
                 clearSelectedIndices();
             }
@@ -158,19 +178,45 @@
             var selectedObject;
             var drag = new THREE.DragControls(objects, camera, renderer.domElement);
             var shiftHeld = false;
-            var althHeld = false;
+            var altHeld = false;
             drag.addEventListener('dragstart', function(e)
             {
                 if(altHeld)
                 {
-                    e.object.parent.remove(e.object);
+                    if(camera.layers.test(EDIT_SCENE))
+                    {
+                        e.object.parent.remove(e.object);
+                    }
+                    else
+                    {
+                        var index = e.object.faceIndex;
+                        if(index !== undefined)
+                        {
+                            clearSelectedIndices();
+                            if(indices.length <= 3)
+                            {
+                                indices.length = 0;
+                            }
+                            else
+                            {
+                                indices.splice(index, 3);
+                            }
+                            createGeometry();
+                        }
+                    }
                     return;
                 }
 
                 controls.enabled = false;
                 currentPoint.visible = false;
 
+                if(selectedObject)
+                {
+                    selectedObject.material = vertexMaterial;
+                }
                 selectedObject = e.object;
+                selectedObject.material = selectedMaterial;
+
                 sync();
 
                 if(shiftHeld)
@@ -210,17 +256,37 @@
                     clearIndices();
                     return;
                 }
-                else if(e.key == "Backspace")
-                {
-                    clearIndices();
-                }
                 else if(e.key == "Escape")
                 {
                     clearSelectedIndices();
+                    selectedObject = null;
                 }
                 else if(e.key == "F1")
                 {
-                    camera.layers.mask ^= 3; // Toggle between 1 and 2
+                    camera.layers.toggle(EDIT_SCENE.channel);
+                    if(camera.layers.test(EDIT_SCENE))
+                    {
+                        objects.length = 0;
+                        geometryGroup.traverse(insertObj);
+                    }
+                }
+                else if(e.key == "F2")
+                {
+                    camera.layers.toggle(MESH_SCENE.channel);
+                    if(camera.layers.test(MESH_SCENE))
+                    {
+                        createGeometry();
+                    }
+                }
+                else if(e.key == '`')
+                {
+                    camera.layers.toggle(FACE_SCENE.channel);
+                    if(camera.layers.test(FACE_SCENE))
+                    {
+                        createGeometry();
+                        objects.length = 0;
+                        facesGroup.traverse(insertObj);
+                    }
                 }
             })
 
@@ -259,27 +325,28 @@
                 sync(true);
             }
 
+            var canvasSize = 128;
             function draw()
             {
                 var context = this.context;
                 context.fillStyle = 'black';
-                context.fillRect(0, 0, 64, 64);
+                context.fillRect(0, 0, canvasSize, canvasSize);
                 context.strokeStyle = context.fillStyle = 'white';
-                context.font = "8px Arial";
+                context.font = (canvasSize * 0.25) + "px Arial";
                 context.textBaseline = "middle";
                 context.textAlign = "center";
 
                 var uv = this.userData.uv;
-                context.fillText("UV", 32, 8, 32);
-                context.fillText(uv.x.toFixed(2), 16, 32, 32);
-                context.fillText(uv.y.toFixed(2), 48, 32, 32);
+                context.fillText("UV", canvasSize * 0.5, canvasSize * 0.125, canvasSize);
+                context.fillText(uv.x.toFixed(2), canvasSize * 0.5, canvasSize * 0.5, canvasSize);
+                context.fillText(uv.y.toFixed(2), canvasSize * 0.5, canvasSize * 0.75, canvasSize);
                 this.material.map.needsUpdate = true;
             }
 
             function addPlane(parent)
             {
                 var canvas = document.createElement("canvas", {alpha : false});
-                canvas.width = canvas.height = 64;
+                canvas.width = canvas.height = canvasSize;
 
                 var mesh = new THREE.Sprite(
                     new THREE.SpriteMaterial({
@@ -324,6 +391,8 @@
                             if(input.parentNode === parent)
                             {
                                 var tab = target[id] || target.userData[id];
+                                if(!tab){continue;}
+
                                 if(targetToSource)
                                 {
                                     tab[key] = parseFloat(input.value);
@@ -381,25 +450,44 @@
                 if(!text){return;}
 
                 textarea.style.display = 'none';
-                createdMesh.geometry = loader.parse(JSON.parse(text));
+                var geometry = loader.parse(JSON.parse(text));
                 geometryGroup.children.length = 0;
-                var array = createdMesh.geometry.attributes.position.array;
-                var uvs = createdMesh.geometry.attributes.uv.array;
-                for(var i = 0; i < array.length; i += 3)
+
+                var vertexSet = new Set();
+                var array = geometry.attributes.position.array;
+                var uvs = geometry.attributes.uv.array;
+                indices = new Array(...geometry.index.array);
+                for(var i of indices)
                 {
+                    if(vertexSet.has(i)){continue;}
+
                     var mesh = new THREE.Mesh(
                         currentPoint.geometry,
                         vertexMaterial
                     );
-                    var vertexindex = Math.floor(i / 3);
+                    var vertexindex = Math.floor(i * 3);
                     mesh.position.set(array[i], array[i+1], array[i+2]);
+
+                    vertexindex = Math.floor(i * 2);
                     mesh.userData.uv = {
-                        x : uvs[vertexindex * 2],
-                        y : uvs[vertexindex * 2 + 1]
+                        x : uvs[vertexindex],
+                        y : uvs[vertexindex + 1]
                     }
                     geometryGroup.add(addPlane(mesh));
+                    vertexSet.add(i);
                 }
-                indices = createdMesh.geometry.index.array.slice();
+
+                createGeometry();
+                objects.length = 0;
+                if(camera.layers.test(EDIT_SCENE))
+                {
+                    geometryGroup.traverse(insertObj);
+                }
+                else if(camera.layers.test(FACE_SCENE))
+                {
+                    facesGroup.traverse(insertObj);
+                }
+                sync();
             }
 
             window.addEventListener('load', function()
@@ -465,28 +553,58 @@
 
             function clearGeometry()
             {
-                geometryGroup.children = [];
+                geometryGroup.children.length = 0;
             }
 
             function createGeometry()
             {
+                if(indices.length < 3)
+                {
+                    createdMesh.geometry = new THREE.BufferGeometry();
+                    facesGroup.children.length = 0;
+                    return;
+                }
+
                 var positions = [];
                 var uvs = [];
+                facesGroup.children.length = 0;
 
-                for(var child of geometryGroup.children)
+                for(var i = 0; i < indices.length; i += 3)
                 {
-                    var pos = child.position;
-                    var uv = child.userData.uv;
-                    positions.push(pos.x, pos.y, pos.z);
-                    uvs.push(uv.x, uv.y);
+                    var child1 = geometryGroup.children[indices[i]],
+                        child2 = geometryGroup.children[indices[i+1]];
+                        child3 = geometryGroup.children[indices[i+2]];
 
-                    var length = pos.length();
+                    if(!child1 || !child2 || !child3){continue;}
+
+                    for(var child of [child1, child2, child3])
+                    {
+                        var pos = child.position;
+                        var uv = child.userData.uv;
+                        positions.push(pos.x, pos.y, pos.z);
+                        uvs.push(uv.x, uv.y);
+                    }
+
+                    var tri = new THREE.BufferGeometry();
+                    tri.addAttribute('position', new THREE.Float32BufferAttribute(positions.slice(positions.length-9), 3));
+                    tri.addAttribute('uv', new THREE.Float32BufferAttribute(uvs.slice(uvs.length-4), 2));
+                    tri.setIndex([0,1,2]);
+                    tri.computeVertexNormals();
+                    var face = new THREE.Mesh(tri);
+                    face.material.side = THREE.DoubleSide;
+                    face.faceIndex = i;
+                    facesGroup.add(face);
                 }
+
+                facesGroup.traverse(function(child)
+                {
+                    child.layers.set(FACE_SCENE.channel);
+                })
 
                 var geometry = createdMesh.geometry;
                 geometry.addAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
                 geometry.addAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-                geometry.setIndex(indices);
+                geometry.setIndex(indices.slice(0));
                 geometry.computeVertexNormals();
             }
 
@@ -544,7 +662,6 @@
                 <table>
                     <tr><button type='button' onclick="loadJSON(document.getElementById('jsonCode'))">Load Geometry</button></tr>
                     <tr><button type='button' onclick='saveGeometry()'>Save Geometry</button></tr>
-                    <tr><button type='button' onclick='createGeometry()'>Create Geometry</button></tr>
                     <tr><button type='button' onclick="clearGeometry()">Clear Geometry</button><br></tr>
                 </table>
                 <textarea id='jsonCode' rows="4" cols="50" placeholder="Enter JSON code to load" style='display: none'></textarea>
@@ -552,7 +669,7 @@
 
             <div id="imageBox" style="width: 100%; height : 100px;">
                 <input type="file" onchange="loadImageFile()">
-                <img src="" style="width: 64px; height: 64px" alt="Drop image here">
+                <img src="block.png" style="width: 64px; height: 64px" alt="Drop image here">
             </div><br>
 
             <button type='button' onclick="clearIndices()">Clear Indices</button>
