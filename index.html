@@ -3,7 +3,7 @@
 <meta charset="utf-8"/>
 	<head>
         <title>three.js Geometry Maker</title>
-        <script src="three.min.js"></script>
+        <script src="three.js"></script>
         <script src="OrbitControls.js"></script>
         <script src='DragControls.js'></script>
         <script src='stats.js'></script>
@@ -29,6 +29,11 @@
                 return canvas;
             }
             var scene = new THREE.Scene();
+
+            var light = new THREE.AmbientLight(0x222244);
+            light.layers.set(1);
+            scene.add(light);
+
             var vertexMaterial = new THREE.MeshNormalMaterial();
             var indexMaterials = [];
             for(var i = 0; i < 3; ++i)
@@ -56,11 +61,14 @@
 
             var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight);
             camera.position.set(0, 0, 30);
+            camera.lookAt(0,0,0);
+            camera.bounds = new THREE.Vector4(0, 0, 1, 1);
+            camera.updateMatrixWorld();
 
-            var forward = new THREE.Vector3();
-
-            var planeDistance = 30;
-
+            var createdMesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial());
+            createdMesh.layers.set(1);
+            scene.add(createdMesh);
+            
             var geometryGroup = new THREE.Group();
             scene.add(geometryGroup);
 
@@ -77,6 +85,8 @@
 
             var mouse = new THREE.Vector2();
             var ray = new THREE.Ray()
+            var forward = new THREE.Vector3();
+            var planeDistance = 30;
             window.addEventListener('mousemove', function(e)
             {
                 mouse.set(
@@ -115,6 +125,7 @@
                     {
                         indices.push(value.parent.children.indexOf(value));
                     }
+                    console.log("Added indices");
                 }
                 selectedIndices.clear();
                 geometryGroup.traverse(setNormalMaterial);   
@@ -175,6 +186,10 @@
                 {
                     clearIndices();
                 }
+                else if(e.key == "F1")
+                {
+                    camera.layers.mask ^= 3; // Toggle between 1 and 2
+                }
             })
 
             window.addEventListener('keyup', function(e)
@@ -186,19 +201,10 @@
             {
                 renderer.setSize(window.innerWidth, window.innerHeight);
                 camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
             }
             window.addEventListener('resize', resize);
             resize();
-
-            function render()
-            {
-                window.requestAnimationFrame(render);
-
-                stats.begin();
-                renderer.render(scene, camera);
-                stats.end();
-            }
-            render();
 
             var keys = ['x', 'y', 'z']
             function updatePosition(id)
@@ -411,9 +417,58 @@
                 geometryGroup.children = [];
             }
 
+            function createGeometry()
+            {
+                var positions = [];
+                var uvs = [];
+                var normals = [];
+
+                for(var child of geometryGroup.children)
+                {
+                    var pos = child.position;
+                    var uv = child.userData.uv;
+                    var normal = child.userData.normal;
+                    positions.push(pos.x, pos.y, pos.z);
+                    uvs.push(uv.x, uv.y);
+                    normals.push(normal.x, normal.y, normal.z);
+                }
+
+                var geometry = createdMesh.geometry;
+                geometry.addAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                geometry.addAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+                geometry.addAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+                geometry.setIndex(indices);
+            }
+
+            function switchSides(obj)
+            {
+                var isLeft = obj.style.left;
+                if(isLeft)
+                {
+                    obj.style.removeProperty('left');
+                    obj.style.right = "0px";
+                }
+                else
+                {
+                    obj.style.removeProperty('right');
+                    obj.style.left = "0px";
+                }
+            }
+
+            function render()
+            {
+                window.requestAnimationFrame(render);
+
+                stats.begin();
+                renderer.render(scene, camera);
+                stats.end();
+            }
+            window.requestAnimationFrame(render);
+
         </script>
 
-        <div id='Current Vertex' style='z-index: 1; background : silver; padding:5px; position:fixed; top:0; right:0; overflow:auto;'>
+        <div id='Current Vertex' style='z-index: 1; background : silver; padding:5px; position:fixed; top:0; left:0; overflow:auto;'>
+            <button type='button' onclick="switchSides(document.getElementById('Current Vertex'))">Switch Sides</button>
 
             <h2>Current Vertex</h2>
 
@@ -449,6 +504,7 @@
             <table>
                 <tr><button type='button' onclick="loadJSON(document.getElementById('jsonCode'))">Load Geometry</button></tr>
                 <tr><button type='button' onclick='saveGeometry()'>Save Geometry</button></tr>
+                <tr><button type='button' onclick='createGeometry()'>Create Geometry</button></tr>
                 <tr><button type='button' onclick="clearGeometry()">Clear</button><br></tr>
             </table>
             <textarea id='jsonCode' rows="4" cols="50" placeholder="Enter JSON code to load" style='display: none'></textarea>
