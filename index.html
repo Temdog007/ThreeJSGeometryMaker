@@ -352,15 +352,13 @@
             document.body.appendChild(link);
             function saveGeometry()
             {
-                var str = JSON.stringify(geometryGroup.toJSON());
-                str = str.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
-
+                var str = JSON.stringify(createdMesh.geometry.toJSON());
                 link.href = URL.createObjectURL(new Blob([str], {type : 'text/plain'}));
                 link.download = 'geometry.json';
                 link.click();
             }
 
-            var loader = new THREE.ObjectLoader();
+            var loader = new THREE.BufferGeometryLoader();
             function loadJSON(textarea)
             {
                 if(textarea.style.display == 'none')
@@ -373,10 +371,23 @@
                 if(!text){return;}
 
                 textarea.style.display = 'none';
-                var obj = loader.parse(JSON.parse(text));
-                geometryGroup.parent.remove(geometryGroup);
-                geometryGroup = obj;
-                scene.add(geometryGroup);
+                createdMesh.geometry = loader.parse(JSON.parse(text));
+                geometryGroup.children.length = 0;
+                var array = createdMesh.geometry.attributes.position.array;
+                var uvs = createdMesh.geometry.attributes.uv.array;
+                for(var i = 0; i < array.length; i += 3)
+                {
+                    var mesh = new THREE.Mesh(
+                        currentPoint.geometry,
+                        vertexMaterial
+                    );
+                    mesh.position.set(array[i], array[i+1], array[i+2]);
+                    mesh.userData.uv = {
+                        x : uvs[i / 3],
+                        y : uvs[i / 3 + 1]
+                    }
+                    geometryGroup.add(addPlane(mesh));
+                }
             }
 
             window.addEventListener('load', function()
