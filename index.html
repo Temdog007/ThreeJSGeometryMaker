@@ -381,13 +381,15 @@
                         currentPoint.geometry,
                         vertexMaterial
                     );
+                    var vertexindex = Math.floor(i / 3);
                     mesh.position.set(array[i], array[i+1], array[i+2]);
                     mesh.userData.uv = {
-                        x : uvs[i / 3],
-                        y : uvs[i / 3 + 1]
+                        x : uvs[vertexindex * 2],
+                        y : uvs[vertexindex * 2 + 1]
                     }
                     geometryGroup.add(addPlane(mesh));
                 }
+                indices = createdMesh.geometry.index.clone();
             }
 
             window.addEventListener('load', function()
