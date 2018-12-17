@@ -30,8 +30,23 @@
             }
             var scene = new THREE.Scene();
 
-            var light = new THREE.AmbientLight(0x222244);
+            var origin = new THREE.Mesh(
+                new THREE.SphereBufferGeometry(),
+                new THREE.MeshBasicMaterial({
+                    transparent : true,
+                    opacity : 0.5
+                })
+            )
+            scene.add(origin);
+
+            var light = new THREE.AmbientLight(0xffffff);
             light.layers.set(1);
+            scene.add(light);
+
+            light = new THREE.DirectionalLight(0xffffff);
+            light.layers.set(1);
+            light.position.set(30, 30, 50);
+            light.lookAt(0,0,0);
             scene.add(light);
 
             var vertexMaterial = new THREE.MeshNormalMaterial();
@@ -65,7 +80,9 @@
             camera.bounds = new THREE.Vector4(0, 0, 1, 1);
             camera.updateMatrixWorld();
 
-            var createdMesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial());
+            var createdMesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({
+                side : THREE.DoubleSide
+            }));
             createdMesh.layers.set(1);
             scene.add(createdMesh);
             
@@ -80,7 +97,6 @@
                 })
             )
             currentPoint.userData.uv = new THREE.Vector2();
-            currentPoint.userData.normal = new THREE.Vector3();
             scene.add(currentPoint);
 
             var mouse = new THREE.Vector2();
@@ -151,6 +167,8 @@
                     
                     var index = selectedIndices.size;
                     selectedIndices.add(selectedObject);
+                    if(index == selectedIndices.size){return;}
+                    
                     selectedObject.material = indexMaterials[index];
                     if(selectedIndices.size >= 3)
                     {
@@ -175,7 +193,6 @@
 
                 if(e.key == "Insert")
                 {
-                    normalizeNormalVector();
                     addVertex();
                     objects.length = 0;
                     geometryGroup.traverse(insertObj);
@@ -236,23 +253,10 @@
                 context.textBaseline = "middle";
                 context.textAlign = "center";
 
-                context.beginPath();
-                context.moveTo(32, 0);
-                context.lineTo(32, 64);
-                context.moveTo(0, 32);
-                context.lineTo(64, 32);
-                context.stroke();
-
                 var uv = this.userData.uv;
-                context.fillText("UV", 16, 16, 32);
-                context.fillText(uv.x.toFixed(2), 48, 8, 32);
-                context.fillText(uv.y.toFixed(2), 48, 24, 32);
-
-                var normal = this.userData.normal;
-                context.fillText("Normal", 16, 48, 32);
-                context.fillText(normal.x.toFixed(2), 48, 40, 32);
-                context.fillText(normal.y.toFixed(2), 48, 48, 32);
-                context.fillText(normal.z.toFixed(2), 48, 56, 32);
+                context.fillText("UV", 32, 8, 32);
+                context.fillText(uv.x.toFixed(2), 16, 32, 32);
+                context.fillText(uv.y.toFixed(2), 48, 32, 32);
                 this.material.map.needsUpdate = true;
             }
 
@@ -285,27 +289,7 @@
                 geometryGroup.add(addPlane(mesh));
             }
 
-            function normalizeNormalVector()
-            {
-                var target = selectedObject || currentPoint;
-                if(!target || !target.visible){return;}
-
-                var normal = target.userData.normal;
-                if(normal.normalize)
-                {
-                    normal.normalize();
-                }
-                else
-                {
-                    var length = Math.sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
-                    normal.x /= length;
-                    normal.y /= length;
-                    normal.z /= length;
-                }
-                sync();
-            }
-
-            var syncArgs = ['position', 'uv', 'normal'];
+            var syncArgs = ['position', 'uv'];
             function sync(targetToSource)
             {
                 targetToSource = targetToSource === true;
@@ -410,7 +394,45 @@
                     }
                     reader.readAsText(files[0], "UTF-8");
                 }, false);
+
+                var imageBox = document.getElementById('imageBox');
+                createdMesh.material.map = new THREE.CanvasTexture(document.querySelector('img'));
+                imageBox.addEventListener('dragover', function(evt)
+                {
+                    evt.stopPropagation();
+                    evt.preventDefault();
+                    evt.dataTransfer.dropEffect = 'copy';
+                }, false);
+                imageBox.addEventListener('drop', function(evt)
+                {
+                    evt.stopPropagation();
+                    evt.preventDefault();
+
+                    var files = evt.dataTransfer.files;
+                    loadImageFile(files[0]);
+                }, false);
             })
+
+            function loadImageFile(file)
+            {
+                var reader = new FileReader();
+                var image = document.querySelector('img');
+                if(!file)
+                {
+                    file = document.querySelector('input[type=file]').files[0];
+                }
+
+                reader.addEventListener('load', function()
+                {
+                    image.src = reader.result;
+                    createdMesh.material.map.needsUpdate = true;
+                }, false);
+
+                if(file)
+                {
+                    reader.readAsDataURL(file);
+                }
+            }
 
             function clearGeometry()
             {
@@ -427,10 +449,11 @@
                 {
                     var pos = child.position;
                     var uv = child.userData.uv;
-                    var normal = child.userData.normal;
                     positions.push(pos.x, pos.y, pos.z);
                     uvs.push(uv.x, uv.y);
-                    normals.push(normal.x, normal.y, normal.z);
+
+                    var length = pos.length();
+                    normals.push(pos.x / length, pos.y / length, pos.z / length);
                 }
 
                 var geometry = createdMesh.geometry;
@@ -490,24 +513,22 @@
                 <input type='number' step='any' class='y' value='0' onchange="updatePosition('uv')">
             </div>
 
-            <h3>Normal</h3>
-            <div id="normal">
-                <label for="x">X</label>
-                <input type='number' step='any' class='x' value='0' onchange="updatePosition('normal')">
-                <label for="x">Y</label>
-                <input type='number' step='any' class='y' value='0' onchange="updatePosition('normal')">
-                <label for="x">Z</label>
-                <input type='number' step='any' class='z' value='0' onchange="updatePosition('normal')">
-                <button type='button' onclick='normalizeNormalVector()'>Normalize</button>
+            <div id="geometryButtons">
+                <table>
+                    <tr><button type='button' onclick="loadJSON(document.getElementById('jsonCode'))">Load Geometry</button></tr>
+                    <tr><button type='button' onclick='saveGeometry()'>Save Geometry</button></tr>
+                    <tr><button type='button' onclick='createGeometry()'>Create Geometry</button></tr>
+                    <tr><button type='button' onclick="clearGeometry()">Clear Geometry</button><br></tr>
+                </table>
+                <textarea id='jsonCode' rows="4" cols="50" placeholder="Enter JSON code to load" style='display: none'></textarea>
             </div>
 
-            <table>
-                <tr><button type='button' onclick="loadJSON(document.getElementById('jsonCode'))">Load Geometry</button></tr>
-                <tr><button type='button' onclick='saveGeometry()'>Save Geometry</button></tr>
-                <tr><button type='button' onclick='createGeometry()'>Create Geometry</button></tr>
-                <tr><button type='button' onclick="clearGeometry()">Clear</button><br></tr>
-            </table>
-            <textarea id='jsonCode' rows="4" cols="50" placeholder="Enter JSON code to load" style='display: none'></textarea>
+            <div id="imageBox" style="width: 100%; height : 100px;">
+                <input type="file" onchange="loadImageFile()">
+                <img src="" style="width: 64px; height: 64px" alt="Drop image here">
+            </div><br>
+
+            <button type='button' onclick="clearIndices()">Clear Indices</button>
         </div>
     </body>
 </html>
