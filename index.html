@@ -133,6 +133,13 @@
 
             var selectedIndices = new Set();
             var indices = [];
+
+            function clearSelectedIndices()
+            {
+                selectedIndices.clear();
+                geometryGroup.traverse(setNormalMaterial);   
+            }
+
             function clearIndices()
             {
                 if(selectedIndices.size >= 3)
@@ -143,8 +150,7 @@
                     }
                     console.log("Added indices");
                 }
-                selectedIndices.clear();
-                geometryGroup.traverse(setNormalMaterial);   
+                clearSelectedIndices();
             }
 
             var objects = [];
@@ -207,6 +213,10 @@
                 else if(e.key == "Backspace")
                 {
                     clearIndices();
+                }
+                else if(e.key == "Escape")
+                {
+                    clearSelectedIndices();
                 }
                 else if(e.key == "F1")
                 {
