@@ -12,12 +12,15 @@
     <body style="margin:0px; width:100%; height: 100%">
 
         <script>
-            var EDIT_SCENE = new THREE.Layers(), MESH_SCENE = new THREE.Layers();
+            var EDIT_SCENE = new THREE.Layers(), MESH_SCENE = new THREE.Layers(), PLANE_SCENE = new THREE.Layers();
             EDIT_SCENE.set(0);
             EDIT_SCENE.channel = 0;
 
             MESH_SCENE.set(1);
             MESH_SCENE.channel = 1;
+
+            PLANE_SCENE.set(2);
+            PLANE_SCENE.channel = 2;
 
             function createCanvas(text)
             {
@@ -90,8 +93,8 @@
             var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight);
             camera.position.set(0, 0, 30);
             camera.lookAt(0,0,0);
-            camera.bounds = new THREE.Vector4(0, 0, 1, 1);
-            camera.updateMatrixWorld();
+            camera.layers.enable(2);
+            camera.updateProjectionMatrix();
 
             var createdMesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({
                 side : THREE.DoubleSide
@@ -320,6 +323,10 @@
                         createGeometry();
                     }
                 }
+                else if(e.key == '`')
+                {
+                    camera.layers.toggle(PLANE_SCENE.channel);
+                }
             })
 
             window.addEventListener('keyup', function(e)
@@ -389,6 +396,7 @@
                 mesh.context = canvas.getContext('2d');
 
                 mesh.position.y = 2;
+                mesh.layers.set(PLANE_SCENE.channel);
                 parent.add(mesh);
 
                 parent.updatePlane = draw.bind(mesh);
@@ -636,6 +644,28 @@
             }
             window.requestAnimationFrame(render);
 
+            function loadScript()
+            {
+                var reader = new FileReader();
+                var file = document.getElementById('scriptButton').files[0];
+
+                reader.addEventListener('load', function()
+                {
+                    var script = document.createElement("script")
+                    script.src = reader.result;
+                    document.body.appendChild(script);
+                    script.addEventListener('load', function()
+                    {
+                        document.body.removeChild(script);
+                    })
+                }, false);
+
+                if(file)
+                {
+                    reader.readAsDataURL(file);
+                }
+            }
+
         </script>
 
         <div id='Current Vertex' style='z-index: 1; background : silver; padding:5px; position:fixed; top:0; left:0; overflow:auto;'>
@@ -672,9 +702,11 @@
             <div id="imageBox" style="width: 100%; height : 100px;">
                 <input id='imageButton' type="file" onchange="loadImageFile()">
                 <img src="block.png" style="width: 64px; height: 64px" alt="Drop image here">
-            </div><br>
+            </div>
 
-            <button type='button' onclick="clearIndices()">Clear Indices</button>
+            <button type='button' onclick="clearIndices()">Clear Indices</button><br>
+
+            <input id='scriptButton' type="file" onchange="loadScript()">
         </div>
     </body>
 </html>
