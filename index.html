@@ -169,6 +169,10 @@
                     {
                         indices.push(value.parent.children.indexOf(value));
                     }
+                    if(!camera.layers.test(EDIT_SCENE))
+                    {
+                        createGeometry();
+                    }
                 }
                 clearSelectedIndices();
             }
@@ -438,18 +442,8 @@
             }
 
             var loader = new THREE.BufferGeometryLoader();
-            function loadJSON(textarea)
+            function loadJSON(text)
             {
-                if(textarea.style.display == 'none')
-                {
-                    textarea.style.display = 'block';
-                    return;
-                }
-
-                var text = textarea.value;
-                if(!text){return;}
-
-                textarea.style.display = 'none';
                 var geometry = loader.parse(JSON.parse(text));
                 geometryGroup.children.length = 0;
 
@@ -466,7 +460,7 @@
                         vertexMaterial
                     );
                     var vertexindex = Math.floor(i * 3);
-                    mesh.position.set(array[i], array[i+1], array[i+2]);
+                    mesh.position.set(array[vertexindex], array[vertexindex+1], array[vertexindex+2]);
 
                     vertexindex = Math.floor(i * 2);
                     mesh.userData.uv = {
@@ -492,26 +486,6 @@
 
             window.addEventListener('load', function()
             {
-                var textarea = document.getElementById("jsonCode");
-                textarea.addEventListener('dragover', function(evt)
-                {
-                    evt.stopPropagation();
-                    evt.preventDefault();
-                    evt.dataTransfer.dropEffect = 'copy';
-                }, false);
-                textarea.addEventListener('drop', function(evt)
-                {
-                    evt.stopPropagation();
-                    evt.preventDefault();
-
-                    var files = evt.dataTransfer.files;
-                    var reader = new FileReader();
-                    reader.onload = function(event){
-                        textarea.value = event.target.result;
-                    }
-                    reader.readAsText(files[0], "UTF-8");
-                }, false);
-
                 var imageBox = document.getElementById('imageBox');
                 createdMesh.material.map = new THREE.CanvasTexture(document.querySelector('img'));
                 imageBox.addEventListener('dragover', function(evt)
@@ -530,13 +504,27 @@
                 }, false);
             })
 
+            function loadGeometryFile(file)
+            {
+                var reader = new FileReader();
+                var file = document.getElementById('geometryButton').files[0];
+                reader.addEventListener('load', function()
+                {
+                    loadJSON(reader.result);
+                })
+                if(file)
+                {
+                    reader.readAsText(file);
+                }
+            }
+
             function loadImageFile(file)
             {
                 var reader = new FileReader();
                 var image = document.querySelector('img');
                 if(!file)
                 {
-                    file = document.querySelector('input[type=file]').files[0];
+                    file = document.getElementById('imageButton').files[0];
                 }
 
                 reader.addEventListener('load', function()
@@ -553,6 +541,7 @@
 
             function clearGeometry()
             {
+                indices.length = 0;
                 geometryGroup.children.length = 0;
             }
 
@@ -569,37 +558,42 @@
                 var uvs = [];
                 facesGroup.children.length = 0;
 
-                for(var i = 0; i < indices.length; i += 3)
+                for(var child of geometryGroup.children)
                 {
-                    var child1 = geometryGroup.children[indices[i]],
-                        child2 = geometryGroup.children[indices[i+1]];
-                        child3 = geometryGroup.children[indices[i+2]];
+                    var pos = child.position;
+                    var uv = child.userData.uv;
+                    positions.push(pos.x, pos.y, pos.z);
+                    uvs.push(uv.x, uv.y);
+                }
 
-                    if(!child1 || !child2 || !child3){continue;}
-
-                    for(var child of [child1, child2, child3])
+                var faceIndex = 0;
+                for(var index = 0; index < indices.length; index += 3)
+                {
+                    var pos = [];
+                    function addIndex()
                     {
-                        var pos = child.position;
-                        var uv = child.userData.uv;
-                        positions.push(pos.x, pos.y, pos.z);
-                        uvs.push(uv.x, uv.y);
+                        for(var i of arguments)
+                        {
+                            var ind = indices[i];
+                            pos.push(positions[ind*3], positions[ind*3+1], positions[ind*3+2]);
+                        }
                     }
+                    addIndex(index, index + 1, index + 2);
 
                     var tri = new THREE.BufferGeometry();
-                    tri.addAttribute('position', new THREE.Float32BufferAttribute(positions.slice(positions.length-9), 3));
-                    tri.addAttribute('uv', new THREE.Float32BufferAttribute(uvs.slice(uvs.length-4), 2));
+                    tri.addAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
                     tri.setIndex([0,1,2]);
                     tri.computeVertexNormals();
                     var face = new THREE.Mesh(tri);
                     face.material.side = THREE.DoubleSide;
-                    face.faceIndex = i;
+                    face.faceIndex = faceIndex++;
                     facesGroup.add(face);
                 }
 
                 facesGroup.traverse(function(child)
                 {
                     child.layers.set(FACE_SCENE.channel);
-                })
+                });
 
                 var geometry = createdMesh.geometry;
                 geometry.addAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -660,15 +654,14 @@
 
             <div id="geometryButtons">
                 <table>
-                    <tr><button type='button' onclick="loadJSON(document.getElementById('jsonCode'))">Load Geometry</button></tr>
+                    <tr><input id='geometryButton' type="file" onchange="loadGeometryFile()"></tr>
                     <tr><button type='button' onclick='saveGeometry()'>Save Geometry</button></tr>
                     <tr><button type='button' onclick="clearGeometry()">Clear Geometry</button><br></tr>
                 </table>
-                <textarea id='jsonCode' rows="4" cols="50" placeholder="Enter JSON code to load" style='display: none'></textarea>
             </div>
 
             <div id="imageBox" style="width: 100%; height : 100px;">
-                <input type="file" onchange="loadImageFile()">
+                <input id='imageButton' type="file" onchange="loadImageFile()">
                 <img src="block.png" style="width: 64px; height: 64px" alt="Drop image here">
             </div><br>
 
