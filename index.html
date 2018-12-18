@@ -470,27 +470,41 @@
                 document.body.removeChild(link);
             }
 
+            function equals(a,b)
+            {
+                return Math.abs(a-b) < 0.0001;
+            }
+
+            THREE.Vector3.prototype.equals = function(x,y,z)
+            {
+                return equals(this.x, x) && equals(this.y, y) && equals(this.z, z);
+            }
+
             var loader = new THREE.BufferGeometryLoader();
             function loadJSON(text)
             {
                 var geometry = loader.parse(JSON.parse(text));
                 geometryGroup.children.length = 0;
 
-                var vertexSet = new Set();
-                var array = geometry.attributes.position.array;
+                var positions = geometry.attributes.position.array;
+                var vertices = positions.length / 3;
                 var uvs = geometry.attributes.uv.array;
                 indices = new Array(...geometry.index.array);
-                for(var i of indices)
+                for(var i = 0; i < vertices; ++i)
                 {
-                    if(vertexSet.has(i)){continue;}
+                    var vertexIndex = Math.floor(i * 3);
+                    var x = positions[vertexIndex], y = positions[vertexIndex+1], z = positions[vertexIndex+2];
+                    if(geometryGroup.children.some(child => child.position.equals(x, y, z)))
+                    {
+                        continue;
+                    }
 
                     var mesh = new THREE.Mesh(
                         currentPoint.geometry,
                         vertexMaterial
                     );
                     mesh.name = "vertex";
-                    var vertexindex = Math.floor(i * 3);
-                    mesh.position.set(array[vertexindex], array[vertexindex+1], array[vertexindex+2]);
+                    mesh.position.set(x,y,z);
 
                     vertexindex = Math.floor(i * 2);
                     mesh.userData.uv = {
@@ -498,7 +512,6 @@
                         y : uvs[vertexindex + 1]
                     }
                     geometryGroup.add(addPlane(mesh));
-                    vertexSet.add(i);
                 }
 
                 createGeometry();
@@ -604,7 +617,7 @@
                     tri.addAttribute('position', new THREE.Float32BufferAttribute(points, 3));
                     var face = new THREE.Mesh(tri, new THREE.MeshBasicMaterial({
                         transparent : true,
-                        opacity : 0.5,
+                        opacity : 0.125,
                         color : Math.floor(0xffffff * Math.random())
                     }));
                     face.material.side = THREE.DoubleSide;
