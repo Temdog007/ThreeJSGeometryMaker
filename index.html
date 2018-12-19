@@ -62,7 +62,7 @@
             var vertexMaterial = new THREE.MeshNormalMaterial({
                 wireframe : true
             });
-            var selectedMaterial = new THREE.MeshNormalMaterial();
+            var selectedMaterial = new THREE.MeshBasicMaterial();
             var indexMaterials = [];
             for(var i = 0; i < 3; ++i)
             {
@@ -97,7 +97,7 @@
             camera.updateProjectionMatrix();
 
             var createdMesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({
-                side : THREE.DoubleSide
+                
             }));
             createdMesh.layers.set(MESH_SCENE.channel);
             scene.add(createdMesh);
@@ -248,6 +248,7 @@
             var drag = new THREE.DragControls(geometryGroup.children, camera, renderer.domElement);
             var shiftHeld = false;
             var ctrlHeld = false;
+            var oldPosiiton = new THREE.Vector3();
             drag.addEventListener('dragstart', function(e)
             {
                 if(!camera.layers.test(e.object.layers) || ctrlHeld)
@@ -265,8 +266,12 @@
                 {
                     selectedObject.material = vertexMaterial;
                 }
+                
                 selectedObject = e.object;
+                oldPosiiton.copy(selectedObject.position);
                 selectedObject.material = selectedMaterial;
+                selectedMaterial.map = selectedObject.children[0].material.map;
+                selectedMaterial.needsUpdate = true;
 
                 sync();
 
@@ -292,6 +297,13 @@
                 sync();
             });
 
+            function setOpacity(child)
+            {
+                if(child.isMesh)
+                {
+                    child.material.opacity = camera.layers.test(MESH_SCENE) ? 0.125 : 1;
+                }
+            }
 
             window.addEventListener('keydown', function(e)
             {
@@ -300,7 +312,14 @@
                 shiftHeld = e.keyCode == 16;
                 ctrlHeld = e.keyCode == 17;
 
-                if(e.key == "Insert")
+                if(e.ctrlKey && (e.key == 'z' || e.key == 'Z'))
+                {
+                    if(selectedObject)
+                    {
+                        selectedObject.position.copy(oldPosiiton);
+                    }
+                }
+                else if(e.key == "Insert")
                 {
                     addVertex();
                     clearIndices();
@@ -322,6 +341,7 @@
                     {
                         createGeometry();
                     }
+                    facesGroup.traverse(setOpacity);
                 }
                 else if(e.key == '`')
                 {
@@ -395,7 +415,6 @@
                 mesh.userData = parent.userData;
                 mesh.context = canvas.getContext('2d');
 
-                mesh.position.y = 2;
                 mesh.layers.set(PLANE_SCENE.channel);
                 parent.add(mesh);
 
@@ -457,12 +476,12 @@
             {
                 return false;
             };
-
-            var link = document.createElement('a');
-            link.style.display = 'none';
-            document.body.appendChild(link);
+            
             function saveGeometry()
             {
+                var link = document.createElement('a');
+                link.style.display = 'none';
+                document.body.appendChild(link);
                 var str = JSON.stringify(createdMesh.geometry.toJSON());
                 link.href = URL.createObjectURL(new Blob([str], {type : 'text/plain'}));
                 link.download = 'geometry.json';
@@ -580,6 +599,8 @@
                 geometryGroup.children.length = 0;
             }
 
+            var colorList = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xffffff, 0xff00ff, 0x00ffff]
+            var colorToggle = 0;
             function createGeometry()
             {
                 facesGroup.children.length = 0;
@@ -600,6 +621,7 @@
                     uvs.push(uv.x, uv.y);
                 }
 
+                var opacity = camera.layers.test(MESH_SCENE) ? 0.125 : 1;
                 for(var index = 0; index < indices.length; index += 3)
                 {
                     var points = [];
@@ -617,8 +639,8 @@
                     tri.addAttribute('position', new THREE.Float32BufferAttribute(points, 3));
                     var face = new THREE.Mesh(tri, new THREE.MeshBasicMaterial({
                         transparent : true,
-                        opacity : 0.125,
-                        color : Math.floor(0xffffff * Math.random())
+                        opacity : opacity,
+                        color : colorList[colorToggle++ % colorList.length]
                     }));
                     face.material.side = THREE.DoubleSide;
                     face.faceIndex = index;
