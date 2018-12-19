@@ -3,10 +3,12 @@
 <meta charset="utf-8"/>
 	<head>
         <title>three.js Geometry Maker</title>
-        <script src="three.js"></script>
-        <script src="OrbitControls.js"></script>
-        <script src='DragControls.js'></script>
-        <script src='stats.js'></script>
+        <script src="lib/three.js"></script>
+        <script src="lib/OrbitControls.js"></script>
+        <script src='lib/DragControls.js'></script>
+        <script src='lib/stats.js'></script>
+        <script src='lib/SVGLoader.js'></script>
+        <script src='lib/BufferGeometryUtils.js'></script>
     </head>
 
     <body style="margin:0px; width:100%; height: 100%">
@@ -96,9 +98,7 @@
             camera.layers.enable(2);
             camera.updateProjectionMatrix();
 
-            var createdMesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({
-                
-            }));
+            var createdMesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial());
             createdMesh.layers.set(MESH_SCENE.channel);
             scene.add(createdMesh);
             
@@ -423,12 +423,22 @@
                 return parent;
             }
 
-            function addVertex()
+            function addVertex(position, userData)
             {
+                var p;
+                if(!position || [position.x, position.y, position.z].some(x => isNaN(x)))
+                {
+                    p = currentPoint.position;
+                }
+                else
+                {
+                    p = position;
+                }
+
                 var mesh = new THREE.Mesh(currentPoint.geometry, vertexMaterial);
                 mesh.name = "vertex";
-                mesh.position.copy(currentPoint.position);
-                mesh.userData = JSON.parse(JSON.stringify(currentPoint.userData));
+                mesh.position.copy(p);
+                mesh.userData = userData || JSON.parse(JSON.stringify(currentPoint.userData));
                 geometryGroup.add(addPlane(mesh));
             }
 
@@ -669,6 +679,36 @@
                 }
             }
 
+            function toggleRepeat()
+            {
+                var checkbox = document.querySelector('input[type=checkbox]');
+                var map = createdMesh.material.map;
+                if(checkbox.checked)
+                {
+                    map.wrapT = THREE.RepeatWrapping;
+                    map.wrapS = THREE.RepeatWrapping;
+                    map.repeat.set(parseFloat(document.getElementById('rx').value), parseFloat(document.getElementById('ry').value));
+                }
+                else
+                {
+                    map.wrapT = THREE.ClampToEdgeWrapping;
+                    map.wrapS = THREE.ClampToEdgeWrapping;
+                    map.repeat.set(1,1);
+                }
+                map.needsUpdate = true;
+            }
+
+            function updateRepeat()
+            {
+                var checkbox = document.querySelector('input[type=checkbox]');
+                if(checkbox.checked)
+                {
+                    var map = createdMesh.material.map;
+                    map.repeat.set(parseFloat(document.getElementById('rx').value), parseFloat(document.getElementById('ry').value));
+                    map.needsUpdate = true;
+                }
+            }
+
             function render()
             {
                 window.requestAnimationFrame(render);
@@ -701,6 +741,23 @@
                 }
             }
 
+            var files = {};
+
+            function storeFile()
+            {
+                var file = document.getElementById("storeFileButton").files[0];
+                var reader = new FileReader();
+                reader.addEventListener('load', function()
+                {
+                    files[file.name] = reader.result;
+                    console.log("Stored file: ", file.name);
+                });
+                if(file)
+                {
+                    reader.readAsText(file);
+                }
+            }
+
         </script>
 
         <div id='Current Vertex' style='z-index: 1; background : silver; padding:5px; position:fixed; top:0; left:0; overflow:auto;'>
@@ -710,38 +767,47 @@
 
             <h3>Position</h3>
             <div id="position">
-                <label for="x">X</label>
-                <input type='number' step='any' class='x' value='0' onchange="updatePosition('position')">
-                <label for="x">Y</label>
-                <input type='number' step='any' class='y' value='0' onchange="updatePosition('position')">
-                <label for="x">Z</label>
-                <input type='number' step='any' class='z' value='0' onchange="updatePosition('position')">
+                <label for="px">X</label>
+                <input type='number' step='any' class='x' value='0' id='px' onchange="updatePosition('position')">
+                <label for="py">Y</label>
+                <input type='number' step='any' class='y' value='0' id='py' onchange="updatePosition('position')">
+                <label for="pz">Z</label>
+                <input type='number' step='any' class='z' value='0' id='pz' onchange="updatePosition('position')">
             </div>
             
             <h3>UV</h3>
             <div id="uv">
-                <label for="x">X</label>
-                <input type='number' step='any' class='x' value='0' onchange="updatePosition('uv')">
-                <label for="x">Y</label>
-                <input type='number' step='any' class='y' value='0' onchange="updatePosition('uv')">
+                <label for="ux">X</label>
+                <input type='number' step='any' class='x' id='ux' value='0' onchange="updatePosition('uv')">
+                <label for="ux">Y</label>
+                <input type='number' step='any' class='y' id='uy' value='0' onchange="updatePosition('uv')">
             </div>
 
             <div id="geometryButtons">
-                <table>
-                    <tr><input id='geometryButton' type="file" onchange="loadGeometryFile()"></tr>
-                    <tr><button type='button' onclick='saveGeometry()'>Save Geometry</button></tr>
-                    <tr><button type='button' onclick="clearGeometry()">Clear Geometry</button><br></tr>
-                </table>
+                <button type='button' onclick='saveGeometry()'>Save Geometry</button>
+                <button type='button' onclick="clearGeometry()">Clear Geometry</button>
+                <input id='geometryButton' type="file" onchange="loadGeometryFile()">
             </div>
 
             <div id="imageBox" style="width: 100%; height : 100px;">
                 <input id='imageButton' type="file" onchange="loadImageFile()">
-                <img src="block.png" style="width: 64px; height: 64px" alt="Drop image here">
+                <img src="images/block.png" style="width: 64px; height: 64px" alt="Drop image here">
+            </div>
+
+            <div>
+                <label for="repeatCheckbox">Repeat Texture?</label>
+                <input type='checkbox' id='repeatCheckbox' onchange='toggleRepeat()'>
+                <label for="rx">Repeat X</label>
+                <input type='number' step='any' id='rx' value='0' onchange="updateRepeat()">
+                <label for="ry">Repeat Y</label>
+                <input type='number' step='any' id='ry' value='0' onchange="updateRepeat()">
             </div>
 
             <button type='button' onclick="clearIndices()">Clear Indices</button><br>
 
             <input id='scriptButton' type="file" onchange="loadScript()">
+
+            <input id='storeFileButton' type="file" onchange="storeFile()">
         </div>
     </body>
 </html>
