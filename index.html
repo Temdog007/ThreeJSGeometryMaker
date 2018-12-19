@@ -14,15 +14,18 @@
     <body style="margin:0px; width:100%; height: 100%">
 
         <script>
-            var EDIT_SCENE = new THREE.Layers(), MESH_SCENE = new THREE.Layers(), PLANE_SCENE = new THREE.Layers();
-            EDIT_SCENE.set(0);
-            EDIT_SCENE.channel = 0;
-
-            MESH_SCENE.set(1);
-            MESH_SCENE.channel = 1;
-
-            PLANE_SCENE.set(2);
-            PLANE_SCENE.channel = 2;
+            function makeScenes()
+            {
+                var i = 0;
+                for(var i = 0; i < arguments.length; ++i)
+                {
+                    var scene = arguments[i];
+                    scene.channel = i;
+                    scene.set(i);
+                }
+            }
+            var EDIT_SCENE = new THREE.Layers(), MESH_SCENE = new THREE.Layers(), PLANE_SCENE = new THREE.Layers(), FACE_SCENE = new THREE.Layers();
+            makeScenes(EDIT_SCENE, MESH_SCENE, PLANE_SCENE, FACE_SCENE);
 
             function createCanvas(text)
             {
@@ -76,6 +79,7 @@
             scene.background = new THREE.Color(0xaaaaaa);
 
             var facesGroup = new THREE.Group();
+            facesGroup.layers.set(FACE_SCENE.channel);
             scene.add(facesGroup);
 
             var stats = new Stats();
@@ -95,7 +99,8 @@
             var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight);
             camera.position.set(0, 0, 30);
             camera.lookAt(0,0,0);
-            camera.layers.enable(2);
+            camera.layers.enable(PLANE_SCENE.channel);
+            camera.layers.enable(FACE_SCENE.channel);
             camera.updateProjectionMatrix();
 
             var createdMesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial());
@@ -346,6 +351,10 @@
                 else if(e.key == '`')
                 {
                     camera.layers.toggle(PLANE_SCENE.channel);
+                }
+                else if(e.key == 'F4')
+                {
+                    camera.layers.toggle(FACE_SCENE.channel);
                 }
             })
 
@@ -607,6 +616,7 @@
             {
                 indices.length = 0;
                 geometryGroup.children.length = 0;
+                createdMesh.geometry = new THREE.BufferGeometry();
             }
 
             var colorList = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xffffff, 0xff00ff, 0x00ffff]
@@ -652,6 +662,7 @@
                         opacity : opacity,
                         color : colorList[colorToggle++ % colorList.length]
                     }));
+                    face.layers.set(FACE_SCENE.channel);
                     face.material.side = THREE.DoubleSide;
                     face.faceIndex = index;
                     facesGroup.add(face);
@@ -761,12 +772,18 @@
         </script>
 
         <div id='Current Vertex' style='z-index: 1; background : silver; padding:5px; position:fixed; top:0; left:0; overflow:auto;'>
+            <style>
+                div {
+                    margin-bottom : 5px;
+                    margin-top: 5px;
+                    border : 1px solid black;
+                }
+            </style>
+
             <button type='button' onclick="switchSides(document.getElementById('Current Vertex'))">Switch Sides</button>
 
-            <h2>Current Vertex</h2>
-
-            <h3>Position</h3>
             <div id="position">
+                <h3>Position</h3>
                 <label for="px">X</label>
                 <input type='number' step='any' class='x' value='0' id='px' onchange="updatePosition('position')">
                 <label for="py">Y</label>
@@ -775,8 +792,8 @@
                 <input type='number' step='any' class='z' value='0' id='pz' onchange="updatePosition('position')">
             </div>
             
-            <h3>UV</h3>
             <div id="uv">
+                <h3>UV</h3>
                 <label for="ux">X</label>
                 <input type='number' step='any' class='x' id='ux' value='0' onchange="updatePosition('uv')">
                 <label for="ux">Y</label>
@@ -784,17 +801,22 @@
             </div>
 
             <div id="geometryButtons">
+                <h3>Geometry</h3>
                 <button type='button' onclick='saveGeometry()'>Save Geometry</button>
                 <button type='button' onclick="clearGeometry()">Clear Geometry</button>
+                <label for='geometryButton'>Load JSON file</label>
                 <input id='geometryButton' type="file" onchange="loadGeometryFile()">
             </div>
 
-            <div id="imageBox" style="width: 100%; height : 100px;">
+            <div id="imageBox">
+                <h3>Texture</h3>
+                <label for='imageButton'>Load Image</label>
                 <input id='imageButton' type="file" onchange="loadImageFile()">
                 <img src="images/block.png" style="width: 64px; height: 64px" alt="Drop image here">
             </div>
 
             <div>
+                <h3>Texture Repeating</h3>>
                 <label for="repeatCheckbox">Repeat Texture?</label>
                 <input type='checkbox' id='repeatCheckbox' onchange='toggleRepeat()'>
                 <label for="rx">Repeat X</label>
@@ -803,11 +825,15 @@
                 <input type='number' step='any' id='ry' value='0' onchange="updateRepeat()">
             </div>
 
-            <button type='button' onclick="clearIndices()">Clear Indices</button><br>
+            <div>
+                <label for='scriptButton'>Load Script</label>
+                <input id='scriptButton' type="file" onchange="loadScript()">
+            </div>
 
-            <input id='scriptButton' type="file" onchange="loadScript()">
-
-            <input id='storeFileButton' type="file" onchange="storeFile()">
+            <div>
+                <label for='storeFileButton'>Store file</label>
+                <input id='storeFileButton' type="file" onchange="storeFile()">
+            </div>
         </div>
     </body>
 </html>
