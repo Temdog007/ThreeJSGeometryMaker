@@ -9,6 +9,7 @@
         <script src='lib/stats.js'></script>
         <script src='lib/SVGLoader.js'></script>
         <script src='lib/BufferGeometryUtils.js'></script>
+        <script src='lib/SimplifyModifier.js'></script>
     </head>
 
     <body style="margin:0px; width:100%; height: 100%">
@@ -489,6 +490,17 @@
                 {
                     target.updatePlane();
                 }
+
+                if(createdMesh.geometry.index)
+                {
+                    var triCount = document.getElementById("triangleCount");
+                    triCount.value = Math.floor(createdMesh.geometry.index.count / 3);
+                }
+                if(createdMesh.geometry.attributes.position)
+                {
+                    var vertCount = document.getElementById("vertexCount");
+                    vertCount.value = Math.floor(createdMesh.geometry.attributes.position.count / 3);
+                }
             }
 
             window.oncontextmenu = function(e)
@@ -814,6 +826,14 @@
             </style>
 
             <button type='button' onclick="switchSides(document.getElementById('Current Vertex'))">Switch Sides</button>
+
+            <div id='count'>
+                <h3>Count</h3>
+                <label for='vertexCount'>Vertices</label>
+                <input type='text' id='vertexCount' readonly>
+                <label for='triangleCount'>Triagnles</label>
+                <input type='text' id='triangleCount' readonly>
+            </div>
 
             <div id="position">
                 <h3>Position</h3>
