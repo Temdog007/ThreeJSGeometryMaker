@@ -527,6 +527,11 @@
                 var positions = geometry.attributes.position.array;
                 var vertices = positions.length / 3;
                 var uvs = geometry.attributes.uv.array;
+                var colors;
+                if(geometry.attributes.color)
+                {
+                    colors = geometry.attributes.color.array;
+                }
                 indices = new Array(...geometry.index.array);
                 for(var i = 0; i < vertices; ++i)
                 {
@@ -544,10 +549,19 @@
                     mesh.name = "vertex";
                     mesh.position.set(x,y,z);
 
-                    vertexindex = Math.floor(i * 2);
+                    if(colors)
+                    {
+                        mesh.userData.color = {
+                            x : colors[vertexIndex],
+                            y : colors[vertexIndex+1],
+                            z : colors[vertexIndex+2]
+                        }
+                    }
+
+                    vertexIndex = Math.floor(i * 2);
                     mesh.userData.uv = {
-                        x : uvs[vertexindex],
-                        y : uvs[vertexindex + 1]
+                        x : uvs[vertexIndex],
+                        y : uvs[vertexIndex + 1]
                     }
                     geometryGroup.add(addPlane(mesh));
                 }
@@ -632,13 +646,19 @@
 
                 var positions = [];
                 var uvs = [];
-                
+                var colors = [];
+
                 for(var child of geometryGroup.children)
                 {
                     var pos = child.position;
                     var uv = child.userData.uv;
                     positions.push(pos.x, pos.y, pos.z);
                     uvs.push(uv.x, uv.y);
+                    var color = child.userData.color;
+                    if(color)
+                    {
+                        colors.push(color.x, color.y, color.z);
+                    }
                 }
 
                 var opacity = camera.layers.test(MESH_SCENE) ? 0.125 : 1;
@@ -671,6 +691,15 @@
                 var geometry = createdMesh.geometry;
                 geometry.addAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
                 geometry.addAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+                if(colors.length > 0)
+                {
+                    geometry.addAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+                    createdMesh.material.vertexColors = THREE.VertexColors;
+                }
+                else
+                {
+                    createdMesh.material.vertexColors = THREE.NoColors;
+                }
                 geometry.setIndex(indices.slice(0));
                 geometry.computeVertexNormals();
             }
@@ -743,6 +772,10 @@
                     script.addEventListener('load', function()
                     {
                         document.body.removeChild(script);
+                    })
+                    script.addEventListener('error', function(e)
+                    {
+                        console.error(e);
                     })
                 }, false);
 
@@ -828,6 +861,7 @@
             <div>
                 <label for='scriptButton'>Load Script</label>
                 <input id='scriptButton' type="file" onchange="loadScript()">
+                <button type='button' onclick='loadScript()'>Reload</button>
             </div>
 
             <div>
