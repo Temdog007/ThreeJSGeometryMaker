@@ -814,6 +814,12 @@
                 }
             }
 
+            function toggleSide()
+            {
+                var checkbox = document.getElementById("sideCheckbox");
+                createdMesh.material.side = checkbox.checked ? THREE.DoubleSide : THREE.FrontSide;
+            }
+
         </script>
 
         <div id='Current Vertex' style='z-index: 1; background : silver; padding:5px; position:fixed; top:0; left:0; overflow:auto;'>
@@ -857,15 +863,17 @@
                 <h3>Geometry</h3>
                 <button type='button' onclick='saveGeometry()'>Save Geometry</button>
                 <button type='button' onclick="clearGeometry()">Clear Geometry</button>
+                <label for='sideCheckbox'>Toggle Sides</label>
+                <input type='checkbox' id='sideCheckbox' onchange='toggleSide()'><br>
                 <label for='geometryButton'>Load JSON file</label>
                 <input id='geometryButton' type="file" onchange="loadGeometryFile()">
             </div>
 
             <div id="imageBox">
                 <h3>Texture</h3>
+                <img src="images/block.png" style="width: 64px; height: 64px" alt="Drop image here"><br>
                 <label for='imageButton'>Load Image</label>
                 <input id='imageButton' type="file" onchange="loadImageFile()">
-                <img src="images/block.png" style="width: 64px; height: 64px" alt="Drop image here">
             </div>
 
             <div>
