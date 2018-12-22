@@ -27,4 +27,4 @@ Tool to create geometries specifically for the ThreeJS framework. This tool will
 - Press *F4* to toggle triangles
 
 ### Screenshot
-![Alt text](images/ThreeJS Geometry Maker screenshot.png)
+![Alt text](images/ThreeJS Geometry Maker screenshot.png?raw=true "Screenshot")
