@@ -318,11 +318,23 @@
                 shiftHeld = e.keyCode == 16;
                 ctrlHeld = e.keyCode == 17;
 
-                if(e.ctrlKey && (e.key == 'z' || e.key == 'Z'))
+                if(e.ctrlKey)
                 {
-                    if(selectedObject)
+                    if((e.key == 'z' || e.key == 'Z'))
                     {
-                        selectedObject.position.copy(oldPosiiton);
+                        if(selectedObject)
+                        {
+                            selectedObject.position.copy(oldPosiiton);
+                        }
+                    }
+                    else if((e.key == 'c') || e.key == 'C')
+                    {
+                        if(selectedObject)
+                        {
+                            var obj = selectedObject.clone();   
+                            obj.position.y += 1;
+                            addVertex(obj.position, obj.userData);
+                        }
                     }
                 }
                 else if(e.key == "Insert")
