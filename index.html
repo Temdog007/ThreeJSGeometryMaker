@@ -291,6 +291,7 @@
                     {
                         clearIndices();
                         createGeometry();
+                        sync();
                     }
                 }
             });
@@ -794,6 +795,8 @@
                     document.body.appendChild(script);
                     script.addEventListener('load', function()
                     {
+                        createGeometry();
+                        sync();
                         document.body.removeChild(script);
                     })
                     script.addEventListener('error', function(e)
