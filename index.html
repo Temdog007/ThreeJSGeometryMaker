@@ -59,10 +59,9 @@
             light.layers.set(MESH_SCENE.channel);
             scene.add(light);
 
-            light = new THREE.DirectionalLight(0xffffff);
+            light = new THREE.PointLight(0xffffff);
             light.layers.set(MESH_SCENE.channel);
-            light.position.set(6, 6, 10);
-            light.lookAt(0,0,0);
+            light.position.set(0, 100, 0);
             scene.add(light);
 
             var vertexMaterial = new THREE.MeshNormalMaterial({
@@ -154,7 +153,7 @@
             
             window.addEventListener('click', function(evt)
             {
-                if(!ctrlHeld || (!camera.layers.test(facesGroup.layers) && !camrea.layers.test(geometryGroup.layers))){return;}
+                if(!ctrlHeld){return;}
 
                 mouse.set(
                     (evt.clientX / window.innerWidth) * 2 - 1,
@@ -168,8 +167,7 @@
                 var object = intersects[0].object;
                 if(!object){return;}
 
-                console.log(object);
-                if(object.name == "vertex")
+                if(camera.layers.test(geometryGroup.layers) && object.name == "vertex")
                 {
                     var index = object.parent.children.indexOf(object);
                     object.parent.remove(object);
@@ -199,7 +197,7 @@
                     }
                     createGeometry();
                 }
-                else if(object.faceIndex !== undefined)
+                else if(camera.layers.test(facesGroup.layers) && object.faceIndex !== undefined)
                 {
                     var index = object.faceIndex;
                     object.parent.remove(object);
@@ -746,7 +744,7 @@
 
             function toggleRepeat()
             {
-                var checkbox = document.querySelector('input[type=checkbox]');
+                var checkbox = document.getElementById('repeatCheckbox');
                 var map = createdMesh.material.map;
                 if(checkbox.checked)
                 {
@@ -765,7 +763,7 @@
 
             function updateRepeat()
             {
-                var checkbox = document.querySelector('input[type=checkbox]');
+                var checkbox = document.getElementById('repeatCheckbox');
                 if(checkbox.checked)
                 {
                     var map = createdMesh.material.map;
