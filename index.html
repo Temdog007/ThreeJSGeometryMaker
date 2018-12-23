@@ -154,7 +154,7 @@
             
             window.addEventListener('click', function(evt)
             {
-                if(!camera.layers.test(facesGroup.layers) || !ctrlHeld){return;}
+                if(!ctrlHeld || (!camera.layers.test(facesGroup.layers) && !camrea.layers.test(geometryGroup.layers))){return;}
 
                 mouse.set(
                     (evt.clientX / window.innerWidth) * 2 - 1,
@@ -168,6 +168,7 @@
                 var object = intersects[0].object;
                 if(!object){return;}
 
+                console.log(object);
                 if(object.name == "vertex")
                 {
                     var index = object.parent.children.indexOf(object);
