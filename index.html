@@ -399,6 +399,10 @@
                         if(input.parentNode === parent)
                         {
                             var tab = currentPoint[id] || currentPoint.userData[id];
+                            if(!tab)
+                            {
+                                tab = currentPoint.userData[id] = {};
+                            }
                             tab[key] = parseFloat(input.value);
                             break;
                         }
@@ -462,10 +466,25 @@
                 mesh.name = "vertex";
                 mesh.position.copy(p);
                 mesh.userData = userData || JSON.parse(JSON.stringify(currentPoint.userData));
+                if(!mesh.userData.uv)
+                {
+                    mesh.userData.uv = {
+                        x : Math.random(),
+                        y : Math.random()
+                    }
+                }
+                if(!mesh.userData.color)
+                {
+                    mesh.userData.color = {
+                        x : 1,
+                        y : 1,
+                        z : 1
+                    }
+                }
                 geometryGroup.add(addPlane(mesh));
             }
 
-            var syncArgs = ['position', 'uv'];
+            var syncArgs = ['position', 'uv', 'color'];
             function sync(targetToSource)
             {
                 targetToSource = targetToSource === true;
@@ -484,7 +503,10 @@
                             if(input.parentNode === parent)
                             {
                                 var tab = target[id] || target.userData[id];
-                                if(!tab){continue;}
+                                if(!tab)
+                                {
+                                    tab = target.userData[id] = {};
+                                }
 
                                 if(targetToSource)
                                 {
@@ -580,6 +602,14 @@
                             x : colors[vertexIndex],
                             y : colors[vertexIndex+1],
                             z : colors[vertexIndex+2]
+                        }
+                    }
+                    else
+                    {
+                        mesh.userData.color = {
+                            x : 1,
+                            y : 1,
+                            z : 1
                         }
                     }
 
@@ -840,6 +870,7 @@
             {
                 camera.position.set(0, 0, 30);
                 camera.lookAt(0,0,0);
+                controls.target.set(0,0,0);
             }
 
         </script>
@@ -882,6 +913,16 @@
                 <input type='number' step='any' class='x' id='ux' value='0' onchange="updatePosition('uv')">
                 <label for="ux">Y</label>
                 <input type='number' step='any' class='y' id='uy' value='0' onchange="updatePosition('uv')">
+            </div>
+
+            <div id="color">
+                <h3>Color</h3>
+                <label for="cx">X</label>
+                <input type='number' step='any' class='x' value='0' id='cx' onchange="updatePosition('color')">
+                <label for="cy">Y</label>
+                <input type='number' step='any' class='y' value='0' id='cy' onchange="updatePosition('color')">
+                <label for="cz">Z</label>
+                <input type='number' step='any' class='z' value='0' id='cz' onchange="updatePosition('color')">
             </div>
 
             <div id="geometryButtons">
