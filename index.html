@@ -101,6 +101,7 @@
             camera.lookAt(0,0,0);
             camera.layers.enable(PLANE_SCENE.channel);
             camera.layers.enable(FACE_SCENE.channel);
+            camera.frustrum = false;
             camera.updateProjectionMatrix();
 
             var createdMesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial());
@@ -725,6 +726,7 @@
                     createdMesh.material.vertexColors = THREE.NoColors;
                 }
                 geometry.setIndex(indices.slice(0));
+                geometry.removeAttribute('normal');
                 geometry.computeVertexNormals();
             }
 
@@ -834,6 +836,12 @@
                 createdMesh.material.side = checkbox.checked ? THREE.DoubleSide : THREE.FrontSide;
             }
 
+            function resetCamera()
+            {
+                camera.position.set(0, 0, 30);
+                camera.lookAt(0,0,0);
+            }
+
         </script>
 
         <div id='Current Vertex' style='z-index: 1; background : silver; padding:5px; position:fixed; top:0; left:0; overflow:auto;'>
@@ -845,7 +853,10 @@
                 }
             </style>
 
-            <button type='button' onclick="switchSides(document.getElementById('Current Vertex'))">Switch Sides</button>
+            <div>
+                <button type='button' onclick="switchSides(document.getElementById('Current Vertex'))">Switch Sides</button>
+                <button type='button' onclick="resetCamera()">Reset Camera</button>
+            </div>
 
             <div id='count'>
                 <h3>Count</h3>
