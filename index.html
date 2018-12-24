@@ -101,7 +101,7 @@
             camera.lookAt(0,0,0);
             camera.layers.enable(PLANE_SCENE.channel);
             camera.layers.enable(FACE_SCENE.channel);
-            camera.frustrum = false;
+            camera.frustumCulled = false;
             camera.updateProjectionMatrix();
 
             var createdMesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial());
