@@ -505,7 +505,11 @@
                                 var tab = target[id] || target.userData[id];
                                 if(!tab)
                                 {
-                                    tab = target.userData[id] = {};
+                                    tab = target.userData[id] = {
+                                        x : 1,
+                                        y : 1,
+                                        z : 1
+                                    };
                                 }
 
                                 if(targetToSource)
