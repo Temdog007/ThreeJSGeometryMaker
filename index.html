@@ -547,12 +547,14 @@
                 return false;
             };
             
-            function saveGeometry()
+            function saveGeometry(geometry)
             {
+                geometry = geometry || createdMesh.geometry;
+
                 var link = document.createElement('a');
                 link.style.display = 'none';
                 document.body.appendChild(link);
-                var str = JSON.stringify(createdMesh.geometry.toJSON());
+                var str = JSON.stringify(geometry.toJSON());
                 link.href = URL.createObjectURL(new Blob([str], {type : 'text/plain'}));
                 link.download = 'geometry.json';
                 link.click();
@@ -572,7 +574,11 @@
             var loader = new THREE.BufferGeometryLoader();
             function loadJSON(text)
             {
-                var geometry = loader.parse(JSON.parse(text));
+                loadGeometry(loader.parse(JSON.parse(text)));
+            }
+
+            function loadGeometry(geometry)
+            {
                 geometryGroup.children.length = 0;
 
                 var positions = geometry.attributes.position.array;
@@ -588,10 +594,6 @@
                 {
                     var vertexIndex = Math.floor(i * 3);
                     var x = positions[vertexIndex], y = positions[vertexIndex+1], z = positions[vertexIndex+2];
-                    if(geometryGroup.children.some(child => child.position.equals(x, y, z)))
-                    {
-                        continue;
-                    }
 
                     var mesh = new THREE.Mesh(
                         currentPoint.geometry,
