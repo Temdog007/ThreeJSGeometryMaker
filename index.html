@@ -590,7 +590,18 @@
                 {
                     colors = geometry.attributes.color.array;
                 }
-                indices = new Array(...geometry.index.array);
+                if(geometry.index)
+                {
+                    indices = new Array(...geometry.index.array);
+                }
+                else
+                {
+                    indices.length = 0;
+                    for(var i = 0; i < positions.length / 3; ++i)
+                    {
+                        indices.push(i);
+                    }
+                }
                 for(var i = 0; i < vertices; ++i)
                 {
                     var vertexIndex = Math.floor(i * 3);
