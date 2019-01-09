@@ -552,12 +552,21 @@
             {
                 geometry = geometry || createdMesh.geometry;
 
+                saveObject(geometry);
+            }
+
+            function saveObject(obj)
+            {
+                saveJSON(JSON.stringify(obj.toJSON()));
+            }
+
+            function saveJSON(json)
+            {
                 var link = document.createElement('a');
                 link.style.display = 'none';
                 document.body.appendChild(link);
-                var str = JSON.stringify(geometry.toJSON());
-                link.href = URL.createObjectURL(new Blob([str], {type : 'text/plain'}));
-                link.download = 'geometry.json';
+                link.href = URL.createObjectURL(new Blob([json], {type : 'text/plain'}));
+                link.download = 'object.json';
                 link.click();
                 document.body.removeChild(link);
             }
