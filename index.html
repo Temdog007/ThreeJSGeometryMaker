@@ -708,6 +708,36 @@
                 }
             }
 
+            function parseGeometry(g)
+            {
+                var v = new THREE.Vector3();
+                var p = g.attributes.position;
+                var uv = g.attributes.uv;
+                var c = g.attributes.color;
+                for(var i = 0; i < g.attributes.position.count; ++i)
+                {
+                    v.set(p.getX(i), p.getY(i), p.getZ(i));
+                    var userData = {};
+                    if(uv)
+                    {
+                        userData.uv = {
+                            x : uv.getX(i),
+                            y : uv.getY(i)
+                        }
+                    }
+                    if(color)
+                    {
+                        userData.color = {
+                            x : c.getX(i),
+                            y : c.getY(i),
+                            z : c.getZ(i)
+                        }
+                    }
+                    addVertex(v, userData);
+                }
+                indices = new Array(...g.index.array);
+            }
+
             function clearGeometry()
             {
                 indices.length = 0;
