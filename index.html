@@ -713,7 +713,11 @@
                 var v = new THREE.Vector3();
                 var p = g.attributes.position;
                 var uv = g.attributes.uv;
-                var c = g.attributes.color;
+                var c;
+                if(g.attributes.color)
+                {
+                    c = g.attributes.color;
+                }
                 for(var i = 0; i < g.attributes.position.count; ++i)
                 {
                     v.set(p.getX(i), p.getY(i), p.getZ(i));
@@ -725,7 +729,7 @@
                             y : uv.getY(i)
                         }
                     }
-                    if(color)
+                    if(color && c)
                     {
                         userData.color = {
                             x : c.getX(i),
