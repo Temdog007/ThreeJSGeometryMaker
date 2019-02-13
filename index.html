@@ -921,10 +921,11 @@
                 }
             }
 
-            function toggleSide()
+            function setSide()
             {
-                var checkbox = document.getElementById("sideCheckbox");
-                createdMesh.material.side = checkbox.checked ? THREE.DoubleSide : THREE.FrontSide;
+                var side = document.getElementById("sideSelection");
+                console.log(side);
+                createdMesh.material.side = THREE[side.value];
             }
 
             function resetCamera()
@@ -990,8 +991,11 @@
                 <h3>Geometry</h3>
                 <button type='button' onclick='saveGeometry()'>Save Geometry</button>
                 <button type='button' onclick="clearGeometry()">Clear Geometry</button>
-                <label for='sideCheckbox'>Toggle Sides</label>
-                <input type='checkbox' id='sideCheckbox' onchange='toggleSide()'><br>
+                <select id="sideSelection" onchange="setSide()">
+                    <option>FrontSide</option>
+                    <option>BackSide</option>
+                    <option>DoubleSide</option>
+                </select><br>
                 <label for='geometryButton'>Load JSON file</label>
                 <input id='geometryButton' type="file" onchange="loadGeometryFile()">
             </div>
